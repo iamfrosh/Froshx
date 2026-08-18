@@ -2,7 +2,7 @@ export const SITE = {
   name: "FroshX",
   fullName: "FroshX Technologies",
   tagline: "Tech Redefined",
-  url: "https://froshx.ng",
+  url: "https://froshx.com.ng",
   description:
     "FroshX Technologies designs and builds websites, platforms and digital products for institutions, unions and businesses across Nigeria — clean engineering, sharp design, delivered on time.",
   email: "froshxtechnologies@gmail.com",
