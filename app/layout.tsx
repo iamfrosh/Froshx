@@ -40,6 +40,10 @@ export const metadata: Metadata = {
   creator: SITE.fullName,
   applicationName: SITE.fullName,
   robots: { index: true, follow: true },
+    verification: {
+    google: "dcFf5hKKHJhYHanLjnO_ooOtKQgpkkqkFDRAVm7GvkU",
+  },
+
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
