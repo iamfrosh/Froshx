@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+ import type { Metadata } from "next";
 import Image from "next/image";
 import CTABand from "@/components/CTABand";
 
@@ -63,7 +63,7 @@ export default function TeamPage() {
                 {m.photo ? (
                   <Image
                     src={m.photo}
-                    alt={`${m.name}, ${m.role} at FroshX`}
+                    alt={`${m.name}, ${m.role}`}
                     fill
                     sizes="(min-width: 1024px) 22vw, (min-width: 640px) 45vw, 90vw"
                     className="object-cover object-top"
