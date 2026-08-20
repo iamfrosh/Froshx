@@ -80,6 +80,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     alternateName: SITE.name,
     url: SITE.url,
     logo: `${SITE.url}/images/froshx-logo.png`,
+      image: `${SITE.url}/images/froshx-logo.png`,
     description: SITE.description,
     email: SITE.email,
     telephone: SITE.phone,
