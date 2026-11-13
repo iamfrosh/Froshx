@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { NAV_LINKS, SITE } from "@/lib/site";
 import { MenuIcon, CloseIcon, PhoneIcon, WhatsAppIcon } from "./Icons";
+import PageLoader from "./academy/PageLoader";
+import SiteEffects from "./academy/SiteEffects";
 
 export default function Header() {
   const pathname = usePathname();
@@ -22,6 +24,9 @@ export default function Header() {
   }, []);
 
   return (
+    <>
+    <PageLoader />
+    <SiteEffects />
     <header
       className={`sticky top-0 z-50 transition-colors duration-300 ${
         scrolled ? "bg-white/90 backdrop-blur border-b border-line" : "bg-transparent"
@@ -41,7 +46,7 @@ export default function Header() {
 
         <nav className="hidden md:flex items-center gap-9" aria-label="Primary">
           {NAV_LINKS.map((link) => {
-            const active = pathname === link.href;
+            const active = pathname === link.href && !link.href.includes("#");
             return (
               <Link
                 key={link.href}
@@ -132,5 +137,6 @@ export default function Header() {
         </div>
       )}
     </header>
+    </>
   );
 }

@@ -43,6 +43,17 @@ export default function PrivacyPage() {
           </div>
 
           <div>
+            <h2 className="font-display text-xl font-semibold text-ink">2b. FroshX Academy registrations</h2>
+            <p className="mt-2">
+              When you register for a course we store the details you submit (name, email, phone, location, learning
+              preferences) so we can contact you and run the course. If you start but do not finish, we may keep your
+              partial answers for up to 30 days so we can help you complete it. We also count anonymous page views
+              (page visited, device type and referring site) to understand how the site is used. We do not store your
+              IP address for this. Ask us at the email below to see or delete your registration.
+            </p>
+          </div>
+
+          <div>
             <h2 className="font-display text-xl font-semibold text-ink">3. Cookies</h2>
             <p className="mt-2">
               We use a small, essential cookie to remember your cookie

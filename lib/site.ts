@@ -6,15 +6,15 @@ export const SITE = {
   description:
     "FroshX Technologies designs and builds websites, platforms and digital products for institutions, unions and businesses across Nigeria — clean engineering, sharp design, delivered on time.",
   email: "froshxtechnologies@gmail.com",
-  phone: "+234 701 410 13001", // TODO: replace with your real business line
-  phoneDisplay: "+234 701 410 13001",
-  whatsapp: "https://wa.me/2347041013001", // TODO: replace with your real WhatsApp number (234XXXXXXXXXX, no + or spaces)
+  phone: "+234 704 101 3001",
+  phoneDisplay: "0704 101 3001",
+  whatsapp: "https://wa.me/2347041013001",
   instagram: "https://instagram.com/froshx.ng",
   facebook: "https://facebook.com/froshx.ng",
   instagramHandle: "@froshx.ng",
   facebookHandle: "Froshx.ng",
   address: "Gombe State, Nigeria",
-  startingPrice: "₦50,000", // TODO: set your real starting price
+  startingPrice: "₦150,000", // TODO: set your real starting price
   typicalTimeline: "2–4 weeks",
 };
 
@@ -23,14 +23,15 @@ export const SITE = {
 export const TESTIMONIALS = [
   {
     quote:
-      "",
-    name: "",
+      "[Add a short quote here — e.g. a line from the Faculty of Education Student Union about working with FroshX on their portal.]",
+    name: "Client name",
     role: "Organisation",
   },
 ];
 
 export const NAV_LINKS = [
   { href: "/", label: "Home" },
+  { href: "/#academy", label: "Academy" },
   { href: "/work", label: "Our Work" },
   { href: "/about", label: "About" },
   { href: "/team", label: "Team" },

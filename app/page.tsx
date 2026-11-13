@@ -6,6 +6,7 @@ import WorkCard from "@/components/WorkCard";
 import TeamCard from "@/components/TeamCard";
 import CTABand from "@/components/CTABand";
 import Testimonial from "@/components/Testimonial";
+import Academy from "@/components/academy/Academy";
 import { ArrowUpRightIcon, CheckIcon } from "@/components/Icons";
 
 export const metadata: Metadata = {
@@ -65,6 +66,12 @@ export default function HomePage() {
                 Start a project
                 <ArrowUpRightIcon className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </Link>
+              <a
+                href="#academy"
+                className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-6 py-4 text-base font-semibold text-ink transition-colors hover:border-flare-500"
+              >
+                <span className="ax-live-dot" /> Join FroshX Academy
+              </a>
               <Link
                 href="/work"
                 className="inline-flex items-center gap-2 text-base font-semibold text-ink px-2 py-4 hover:text-flare-600 transition-colors"
@@ -77,6 +84,8 @@ export default function HomePage() {
 
         <div className="x-divider" />
       </section>
+
+      <Academy />
 
       {/* Trust strip */}
       <section className="py-10 md:py-12 border-b border-line">
@@ -244,7 +253,7 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-12 max-w-4xl">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
             {TEAM_PREVIEW.map((m) => (
               <TeamCard key={m.name} member={m} />
             ))}

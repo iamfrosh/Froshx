@@ -1,0 +1,35 @@
+/* FroshX Academy: animations and small helpers (imported by Academy.tsx) */
+@keyframes ax-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ax-pop { 0% { transform: scale(.6); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes ax-draw { to { stroke-dashoffset: 0; } }
+@keyframes ax-ring { 0% { transform: scale(.9); opacity: .6; } 100% { transform: scale(1.9); opacity: 0; } }
+@keyframes ax-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes ax-fall { 0% { transform: translate3d(0,-20px,0) rotate(0); opacity: 0; } 10% { opacity: 1; } 100% { transform: translate3d(var(--dx,0),340px,0) rotate(540deg); opacity: 0; } }
+@keyframes ax-bar { 0% { width: 0; } 70% { width: 88%; } 100% { width: 100%; } }
+@keyframes ax-logo { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+@keyframes ax-shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+@keyframes ax-dot { 0%,100% { transform: translateY(0); opacity: .35; } 50% { transform: translateY(-6px); opacity: 1; } }
+
+.ax-reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1); transition-delay: var(--d, 0ms); }
+.ax-reveal.ax-in { opacity: 1; transform: none; }
+
+.ax-live-dot { position: relative; width: 8px; height: 8px; border-radius: 999px; background: #22C55E; }
+.ax-live-dot::after { content: ""; position: absolute; inset: 0; border-radius: 999px; background: #22C55E; animation: ax-ring 1.8s ease-out infinite; }
+
+.ax-float { animation: ax-float 6s ease-in-out infinite; }
+.ax-shimmer-btn { background-image: linear-gradient(110deg, #15130F 30%, #3a332a 50%, #15130F 70%); background-size: 200% 100%; }
+.ax-shimmer-btn:hover { animation: ax-shimmer 1.6s linear infinite; }
+
+.ax-check-circle { stroke-dasharray: 166; stroke-dashoffset: 166; animation: ax-draw .7s cubic-bezier(.65,0,.45,1) .1s forwards; }
+.ax-check-mark { stroke-dasharray: 48; stroke-dashoffset: 48; animation: ax-draw .4s cubic-bezier(.65,0,.45,1) .75s forwards; }
+.ax-pop { animation: ax-pop .6s cubic-bezier(.16,1,.3,1) both; }
+.ax-rise { animation: ax-rise .6s cubic-bezier(.16,1,.3,1) both; }
+.ax-confetti { position: absolute; top: 0; width: 8px; height: 14px; border-radius: 2px; animation: ax-fall 2.8s ease-in forwards; }
+
+.ax-loader-bar { animation: ax-bar 1.1s cubic-bezier(.4,0,.2,1) forwards; }
+.ax-loader-logo { animation: ax-logo 1.4s ease-in-out infinite; }
+.ax-loader-dot { animation: ax-dot 1s ease-in-out infinite; }
+
+.ax-input { width: 100%; border: 1px solid #E7E2DA; background: #fff; border-radius: 14px; padding: 13px 16px; font-size: 15px; color: #15130F; transition: border-color .2s, box-shadow .2s; }
+.ax-input:focus { outline: none; border-color: #F97316; box-shadow: 0 0 0 4px rgba(249,115,22,.15); }
+.ax-input.ax-bad { border-color: #DC2626; box-shadow: 0 0 0 4px rgba(220,38,38,.10); }
