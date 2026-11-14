@@ -7,9 +7,9 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       for (const c of list) {
-        if ("focus" in c) { c.navigate("/#register"); return c.focus(); }
+        if ("focus" in c) { c.navigate("/register"); return c.focus(); }
       }
-      return self.clients.openWindow("/#register");
+      return self.clients.openWindow("/register");
     })
   );
 });

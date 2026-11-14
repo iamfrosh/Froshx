@@ -19,7 +19,7 @@ export async function GET() {
   const lines = [head.map(esc).join(",")];
   for (const r of rows) {
     lines.push(
-      [r.ref, new Date(r.createdAt as unknown as string).toISOString(), r.fullName, r.email, r.phone, r.courseTitle, r.mode, r.fee, r.status, r.gender, r.ageRange, r.location, r.education, r.device, r.experience, r.preferredStart, r.goal, r.source]
+      [r.ref, ((r as unknown as { createdAt?: Date }).createdAt ?? new Date(0)).toISOString(), r.fullName, r.email, r.phone, r.courseTitle, r.mode, r.fee, r.status, r.gender, r.ageRange, r.location, r.education, r.device, r.experience, r.preferredStart, r.goal, r.source]
         .map(esc)
         .join(",")
     );

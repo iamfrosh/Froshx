@@ -6,7 +6,7 @@ import WorkCard from "@/components/WorkCard";
 import TeamCard from "@/components/TeamCard";
 import CTABand from "@/components/CTABand";
 import Testimonial from "@/components/Testimonial";
-import Academy from "@/components/academy/Academy";
+import AcademyTeaser from "@/components/academy/AcademyTeaser";
 import { ArrowUpRightIcon, CheckIcon } from "@/components/Icons";
 
 export const metadata: Metadata = {
@@ -67,10 +67,10 @@ export default function HomePage() {
                 <ArrowUpRightIcon className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </Link>
               <a
-                href="#academy"
+                href="/register"
                 className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-6 py-4 text-base font-semibold text-ink transition-colors hover:border-flare-500"
               >
-                <span className="ax-live-dot" /> Join FroshX Academy
+                <span className="ax-live-dot" /> Registration open · Start your tech career
               </a>
               <Link
                 href="/work"
@@ -85,7 +85,7 @@ export default function HomePage() {
         <div className="x-divider" />
       </section>
 
-      <Academy />
+      <AcademyTeaser />
 
       {/* Trust strip */}
       <section className="py-10 md:py-12 border-b border-line">

@@ -18,7 +18,9 @@ Project → **Settings → Environment Variables**, then **redeploy**:
 (`.env.example` shows the format. For local testing copy it to `.env.local`.)
 
 ## 3. Use it
-- Landing page → **FroshX Academy** section with courses, fees, and the registration form.
+- Landing page → a "Registration open" banner, an Academy section (fees, courses, quote slideshow) and buttons to the registration page.
+- `/register` → the registration page (3 steps, course summary, FAQ). Links like `/register?course=web-development` preselect a course.
+- Edit the slideshow quotes in `lib/quotes.ts`.
 - `/admin` → sign in with `ADMIN_PASSWORD` to see registrations, unfinished registrations, visitors, and export CSV.
 - Collections created automatically in MongoDB: `registrations`, `drafts`, `visits`.
 

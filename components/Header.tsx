@@ -8,6 +8,7 @@ import { NAV_LINKS, SITE } from "@/lib/site";
 import { MenuIcon, CloseIcon, PhoneIcon, WhatsAppIcon } from "./Icons";
 import PageLoader from "./academy/PageLoader";
 import SiteEffects from "./academy/SiteEffects";
+import RecruitBanner from "./academy/RecruitBanner";
 
 export default function Header() {
   const pathname = usePathname();
@@ -27,6 +28,7 @@ export default function Header() {
     <>
     <PageLoader />
     <SiteEffects />
+    <RecruitBanner />
     <header
       className={`sticky top-0 z-50 transition-colors duration-300 ${
         scrolled ? "bg-white/90 backdrop-blur border-b border-line" : "bg-transparent"

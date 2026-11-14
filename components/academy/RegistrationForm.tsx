@@ -208,6 +208,8 @@ export default function RegistrationForm({ course, mode, onCourse, onMode }: Pro
         })}
       </ol>
 
+      <p className="-mt-4 mb-6 text-sm font-semibold sm:hidden">Step {step} of 3 · <span className="text-flare-600">{STEPS[step - 1]}</span></p>
+
       {restored && (
         <div className="ax-rise mb-6 flex items-start justify-between gap-3 rounded-2xl border border-flare-100 bg-flare-50 p-4 text-sm">
           <p><b>Welcome back{d.fullName ? `, ${d.fullName.split(" ")[0]}` : ""}!</b> We saved your answers. Continue where you stopped.</p>
@@ -371,18 +373,18 @@ export default function RegistrationForm({ course, mode, onCourse, onMode }: Pro
         )}
 
         {/* nav */}
-        <div className="mt-8 flex items-center justify-between gap-3">
+        <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           {step > 1 ? (
-            <button type="button" onClick={() => goto((step - 1) as 1 | 2)} className="inline-flex items-center gap-1 rounded-full px-4 py-3 text-sm font-semibold text-muted transition hover:text-ink">
+            <button type="button" onClick={() => goto((step - 1) as 1 | 2)} className="inline-flex items-center justify-center gap-1 rounded-full px-4 py-3 text-sm font-semibold text-muted transition hover:text-ink">
               <ChevronLeftIcon className="h-4 w-4" /> Back
             </button>
-          ) : <span />}
+          ) : <span className="hidden sm:block" />}
           {step < 3 ? (
-            <button type="button" onClick={next} className="ax-shimmer-btn inline-flex items-center gap-2 rounded-full bg-ink px-7 py-4 font-semibold text-white transition hover:bg-flare-600">
+            <button type="button" onClick={next} className="ax-shimmer-btn inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink px-7 py-4 font-semibold text-white transition hover:bg-flare-600 sm:w-auto">
               Continue <ChevronRightIcon className="h-4 w-4" />
             </button>
           ) : (
-            <button type="submit" disabled={submitting} className="ax-shimmer-btn inline-flex items-center gap-2 rounded-full bg-ink px-7 py-4 font-semibold text-white transition hover:bg-flare-600 disabled:opacity-60">
+            <button type="submit" disabled={submitting} className="ax-shimmer-btn inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink px-7 py-4 font-semibold text-white transition hover:bg-flare-600 disabled:opacity-60 sm:w-auto">
               {submitting ? (<><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> Submitting…</>) : "Complete registration"}
             </button>
           )}

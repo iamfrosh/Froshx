@@ -31,7 +31,7 @@ export const TESTIMONIALS = [
 
 export const NAV_LINKS = [
   { href: "/", label: "Home" },
-  { href: "/#academy", label: "Academy" },
+  { href: "/register", label: "Academy" },
   { href: "/work", label: "Our Work" },
   { href: "/about", label: "About" },
   { href: "/team", label: "Team" },

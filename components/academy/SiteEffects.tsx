@@ -97,7 +97,7 @@ export default function SiteEffects() {
         <div className="flex-1">
           <p className="text-sm font-semibold text-ink">You’re almost registered</p>
           <p className="mt-0.5 text-[13px] leading-relaxed text-muted">Finish your FroshX Academy registration. Your answers are saved.</p>
-          <Link href="/#register" onClick={() => setToast(false)} className="mt-2 inline-block text-sm font-semibold text-flare-600 hover:underline">
+          <Link href="/register" onClick={() => setToast(false)} className="mt-2 inline-block text-sm font-semibold text-flare-600 hover:underline">
             Continue registration →
           </Link>
         </div>
