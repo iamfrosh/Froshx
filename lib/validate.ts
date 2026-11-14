@@ -1,4 +1,4 @@
-import { COURSES, FEES } from "./academy";
+import { COURSES, MODE_IDS, Mode } from "./academy";
 
 export type RegistrationInput = {
   course: string;
@@ -16,6 +16,7 @@ export type RegistrationInput = {
   preferredStart: string;
   goal: string;
   source: string;
+  committed: boolean;
   consent: boolean;
   website?: string; // honeypot
 };
@@ -32,7 +33,7 @@ export function validateStep(step: 1 | 2 | 3, d: RegistrationInput): Errors {
   const e: Errors = {};
   if (step === 1) {
     if (!COURSES.some((c) => c.id === d.course)) e.course = "Please choose a course.";
-    if (!(d.mode in FEES)) e.mode = "Please choose online or physical training.";
+    if (!MODE_IDS.includes(d.mode as Mode)) e.mode = "Please choose online or physical training.";
   }
   if (step === 2) {
     if (d.fullName.trim().split(/\s+/).filter(Boolean).length < 2) e.fullName = "Enter your first and last name.";
@@ -47,6 +48,7 @@ export function validateStep(step: 1 | 2 | 3, d: RegistrationInput): Errors {
     if (!d.device) e.device = "Tell us what device you will learn on.";
     if (!d.experience) e.experience = "Select your experience level.";
     if (!d.startAsap && !d.preferredStart) e.preferredStart = "Pick a preferred start date or choose “As soon as possible”.";
+    if (!d.committed) e.committed = "Please confirm you are serious about learning.";
     if (!d.consent) e.consent = "Please agree so we can contact you about your registration.";
   }
   return e;

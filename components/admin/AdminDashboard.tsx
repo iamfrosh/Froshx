@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { COURSES, naira } from "@/lib/academy";
 import "../academy/academy.css";
+import { messageEmail } from "@/lib/emailTemplates";
 import { WhatsAppIcon } from "../Icons";
 import { UsersIcon, ChartIcon, ClockIcon, BellIcon, ShieldIcon } from "../academy/AcademyIcons";
 
 type Reg = {
   _id: string; ref: string; courseTitle: string; mode: string; fee: number; fullName: string; email: string; phone: string;
   gender?: string; ageRange?: string; location?: string; education?: string; device?: string; experience?: string;
-  preferredStart?: string; goal?: string; source?: string; status: string; createdAt: string;
+  preferredStart?: string; goal?: string; source?: string; status: string; createdAt: string; emailStatus?: string;
 };
 type Draft = { _id: string; fullName?: string; email?: string; phone?: string; course?: string; mode?: string; step?: number; updatedAt: string };
 type Count = { _id: string; count: number };
@@ -87,7 +88,7 @@ export default function AdminDashboard() {
   const [q, setQ] = useState("");
   const [courseF, setCourseF] = useState("");
   const [statusF, setStatusF] = useState("");
-  const [tab, setTab] = useState<"regs" | "drafts">("regs");
+  const [tab, setTab] = useState<"regs" | "drafts" | "email">("regs");
   const [open, setOpen] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
@@ -136,6 +137,92 @@ export default function AdminDashboard() {
       (!s || [r.fullName, r.email, r.phone, r.ref, r.location].some((v) => (v || "").toLowerCase().includes(s)))
     );
   }, [data, q, courseF, statusF]);
+
+  // ---- email composer
+  const [aud, setAud] = useState<"all" | "course" | "status" | "drafts" | "one">("all");
+  const [audCourse, setAudCourse] = useState("");
+  const [audStatus, setAudStatus] = useState("new");
+  const [oneId, setOneId] = useState("");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [ctaLabel, setCtaLabel] = useState("");
+  const [ctaUrl, setCtaUrl] = useState("");
+  const [sending, setSending] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [mailNote, setMailNote] = useState("");
+  const [mailFailed, setMailFailed] = useState<{ email: string; error: string }[]>([]);
+
+  const recipients = useMemo(() => {
+    const none = { target: "registrations" as "registrations" | "drafts", items: [] as { id: string; name: string; email: string }[] };
+    if (!data) return none;
+    if (aud === "drafts") {
+      return { target: "drafts" as const, items: data.drafts.filter((d) => d.email).map((d) => ({ id: d._id, name: d.fullName || "(no name)", email: d.email as string })) };
+    }
+    let list = data.registrations;
+    if (aud === "all") list = list.filter((r) => r.status !== "cancelled");
+    if (aud === "course") list = list.filter((r) => r.courseTitle === audCourse && r.status !== "cancelled");
+    if (aud === "status") list = list.filter((r) => r.status === audStatus);
+    if (aud === "one") list = list.filter((r) => r._id === oneId);
+    return { target: "registrations" as const, items: list.map((r) => ({ id: r._id, name: r.fullName, email: r.email })) };
+  }, [data, aud, audCourse, audStatus, oneId]);
+
+  const preview = useMemo(
+    () =>
+      messageEmail({
+        subject: subject || "Your subject goes here",
+        message: message || "Your message appears here.\n\nWrite in plain text. Blank lines make new paragraphs.",
+        ctaLabel, ctaUrl,
+        vars: { name: "Amina", fullName: "Amina Yusuf", course: "Web Development", ref: "FXA-7K3M9P" },
+      }).html,
+    [subject, message, ctaLabel, ctaUrl]
+  );
+
+  const PRESETS: { label: string; subject: string; message: string }[] = [
+    { label: "Welcome", subject: "Welcome to FroshX Academy, {{name}}!", message: "Thank you for registering for {{course}}. We are excited to have you.\n\nOur team will be in touch with the next steps. Keep your reference number {{ref}} handy." },
+    { label: "Payment & documents", subject: "Your {{course}} registration: next steps", message: "We are following up on your {{course}} registration ({{ref}}).\n\nPlease reply to this email or message us on WhatsApp so we can share the payment details and the documents we need from you." },
+    { label: "Start date", subject: "Your {{course}} start date", message: "Good news, {{name}}! Your start date for {{course}} is [add date here].\n\nPlease reply to confirm you can make it." },
+    { label: "Finish registering", subject: "Finish your FroshX Academy registration", message: "We noticed you started registering for {{course}} but did not finish.\n\nIt only takes a minute to complete, and we would love to have you in class." },
+  ];
+
+  const mailCall = async (body: Record<string, unknown>) => {
+    const res = await fetch("/api/admin/email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || "Could not send.");
+    return json as { sent: number; failed: { email: string; error: string }[]; to?: string };
+  };
+
+  const sendTest = async () => {
+    setMailNote(""); setMailFailed([]);
+    try {
+      const r = await mailCall({ mode: "test", subject, message, ctaLabel, ctaUrl });
+      setMailNote(`Test email sent to ${r.to}. Check that inbox.`);
+    } catch (e) { setMailNote(e instanceof Error ? e.message : "Could not send."); }
+  };
+
+  const sendBulk = async () => {
+    const n = recipients.items.length;
+    if (!n || !subject.trim() || !message.trim()) return;
+    if (!window.confirm(`Send this email to ${n} ${n === 1 ? "person" : "people"}?`)) return;
+    setSending(true); setMailNote(""); setMailFailed([]); setProgress({ done: 0, total: n });
+    let sent = 0; const failed: { email: string; error: string }[] = [];
+    try {
+      for (let i = 0; i < n; i += 20) {
+        const ids = recipients.items.slice(i, i + 20).map((x) => x.id);
+        const r = await mailCall({ mode: "bulk", target: recipients.target, ids, subject, message, ctaLabel, ctaUrl });
+        sent += r.sent; failed.push(...r.failed);
+        setProgress({ done: Math.min(i + 20, n), total: n });
+      }
+      setMailNote(`Done. ${sent} sent${failed.length ? `, ${failed.length} failed` : ""}.`);
+    } catch (e) {
+      setMailNote(`Stopped after ${sent} sent. ${e instanceof Error ? e.message : ""}`);
+    }
+    setMailFailed(failed); setSending(false);
+  };
+
+  const resend = async (id: string) => {
+    try { await mailCall({ mode: "resend", id }); setError(""); load(); alert("Confirmation email sent."); }
+    catch (e) { alert(e instanceof Error ? e.message : "Could not send."); }
+  };
 
   // ------- loading / login
   if (authed === null) {
@@ -235,7 +322,7 @@ export default function AdminDashboard() {
 
           {/* tabs */}
           <div className="mt-10 flex gap-2 border-b border-line">
-            {([["regs", `Registrations (${data.registrations.length})`], ["drafts", `Unfinished (${data.drafts.length})`]] as const).map(([k, l]) => (
+            {([["regs", `Registrations (${data.registrations.length})`], ["drafts", `Unfinished (${data.drafts.length})`], ["email", "Send email"]] as const).map(([k, l]) => (
               <button key={k} onClick={() => setTab(k)} className={`-mb-px border-b-2 px-4 py-3 text-sm font-semibold transition ${tab === k ? "border-flare-500 text-ink" : "border-transparent text-muted hover:text-ink"}`}>{l}</button>
             ))}
           </div>
@@ -272,9 +359,10 @@ export default function AdminDashboard() {
                         <a href={waLink(r.phone, `Hello ${r.fullName.split(" ")[0]}, this is FroshX Academy about your ${r.courseTitle} registration (${r.ref}).`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white">
                           <WhatsAppIcon className="h-4 w-4" /> WhatsApp
                         </a>
+                        <button onClick={() => { setAud("one"); setOneId(r._id); setTab("email"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="rounded-full border border-line px-4 py-2 text-sm font-semibold hover:border-ink">Email</button>
                       </div>
                       {open === r._id && (
-                        <dl className="grid gap-x-8 gap-y-3 border-t border-line bg-cloud p-5 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="border-t border-line bg-cloud"><dl className="grid gap-x-8 gap-y-3 p-5 text-sm sm:grid-cols-2 lg:grid-cols-3">
                           {([["Email", r.email], ["Phone", r.phone], ["Location", r.location], ["Age range", r.ageRange], ["Gender", r.gender], ["Education", r.education], ["Device", r.device], ["Experience", r.experience], ["Preferred start", r.preferredStart], ["Heard about us", r.source], ["Goal", r.goal]] as [string, string | undefined][]).map(([k, v]) => (
                             <div key={k} className={k === "Goal" ? "sm:col-span-2 lg:col-span-3" : ""}>
                               <dt className="text-xs text-muted">{k}</dt>
@@ -282,6 +370,10 @@ export default function AdminDashboard() {
                             </div>
                           ))}
                         </dl>
+                        <div className="flex flex-wrap items-center gap-3 border-t border-line px-5 py-4 text-sm">
+                          <span className="text-muted">Confirmation email: <b className={r.emailStatus === "sent" ? "text-green-700" : "text-red-600"}>{r.emailStatus === "sent" ? "sent" : r.emailStatus === "failed" ? "failed" : "pending"}</b></span>
+                          <button onClick={() => resend(r._id)} className="rounded-full border border-line px-4 py-2 font-semibold hover:border-ink">Resend confirmation</button>
+                        </div></div>
                       )}
                     </li>
                   ))}
@@ -302,7 +394,7 @@ export default function AdminDashboard() {
                       <div className="min-w-[200px] flex-1">
                         <p className="font-semibold">{d.fullName || "(no name yet)"}</p>
                         <p className="text-[13px] text-muted">{[d.email, d.phone].filter(Boolean).join(" · ")}</p>
-                        <p className="text-[13px] text-muted">{COURSES.find((c) => c.id === d.course)?.title || "No course picked"} · stopped at step {d.step || 1} of 3</p>
+                        <p className="text-[13px] text-muted">{COURSES.find((c) => c.id === d.course)?.title || "No course picked"} · stopped at step {d.step || 1} of 2</p>
                       </div>
                       <p className="text-[13px] text-muted">{ago(d.updatedAt)}</p>
                       {d.phone && (
@@ -314,6 +406,92 @@ export default function AdminDashboard() {
                   ))}
                 </ul>
               )}
+            </div>
+          )}
+
+          {tab === "email" && (
+            <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_1fr]">
+              <div className="space-y-5 rounded-2xl border border-line bg-white p-5 sm:p-6">
+                <div>
+                  <h2 className="font-display text-lg font-semibold">Send a professional email</h2>
+                  <p className="mt-1 text-sm text-muted">Sent from froshxtechnologies@gmail.com with the FroshX design.</p>
+                </div>
+
+                <div>
+                  <label htmlFor="aud" className="mb-2 block text-sm font-medium">Who should receive it?</label>
+                  <select id="aud" className="ax-input" value={aud} onChange={(e) => setAud(e.target.value as typeof aud)}>
+                    <option value="all">All registrants</option>
+                    <option value="course">One course</option>
+                    <option value="status">By status</option>
+                    <option value="drafts">Unfinished registrations</option>
+                    <option value="one">One person</option>
+                  </select>
+                  {aud === "course" && (
+                    <select className="ax-input mt-3" value={audCourse} onChange={(e) => setAudCourse(e.target.value)}>
+                      <option value="">Choose a course</option>{COURSES.map((c) => <option key={c.id}>{c.title}</option>)}
+                    </select>
+                  )}
+                  {aud === "status" && (
+                    <select className="ax-input mt-3" value={audStatus} onChange={(e) => setAudStatus(e.target.value)}>
+                      {STATUSES.map((x) => <option key={x}>{x}</option>)}
+                    </select>
+                  )}
+                  {aud === "one" && (
+                    <select className="ax-input mt-3" value={oneId} onChange={(e) => setOneId(e.target.value)}>
+                      <option value="">Choose a person</option>
+                      {data.registrations.map((r) => <option key={r._id} value={r._id}>{r.fullName} ({r.courseTitle})</option>)}
+                    </select>
+                  )}
+                  <p className="mt-2 text-sm"><b>{recipients.items.length}</b> {recipients.items.length === 1 ? "recipient" : "recipients"}{recipients.items.length > 0 && recipients.items.length <= 4 ? `: ${recipients.items.map((x) => x.email).join(", ")}` : ""}</p>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-sm font-medium">Quick start</p>
+                  <div className="flex flex-wrap gap-2">
+                    {PRESETS.map((p) => (
+                      <button key={p.label} type="button" onClick={() => { setSubject(p.subject); setMessage(p.message); }} className="rounded-full border border-line px-3.5 py-2 text-xs font-semibold hover:border-flare-500">{p.label}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="subj" className="mb-2 block text-sm font-medium">Subject</label>
+                  <input id="subj" className="ax-input" value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={150} placeholder="e.g. Your class starts soon" />
+                </div>
+                <div>
+                  <label htmlFor="msg" className="mb-2 block text-sm font-medium">Message</label>
+                  <textarea id="msg" rows={8} className="ax-input resize-y" value={message} onChange={(e) => setMessage(e.target.value)} maxLength={6000} placeholder="Write in plain text. Leave a blank line between paragraphs." />
+                  <p className="mt-1.5 text-xs text-muted">Personalise with <code>{"{{name}}"}</code> <code>{"{{course}}"}</code> <code>{"{{ref}}"}</code> <code>{"{{fullName}}"}</code></p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="cl" className="mb-2 block text-sm font-medium">Button text (optional)</label>
+                    <input id="cl" className="ax-input" value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} placeholder="e.g. Chat on WhatsApp" />
+                  </div>
+                  <div>
+                    <label htmlFor="cu" className="mb-2 block text-sm font-medium">Button link</label>
+                    <input id="cu" className="ax-input" value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} placeholder="https://…" inputMode="url" />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <button type="button" onClick={sendTest} disabled={sending || !subject.trim() || !message.trim()} className="rounded-full border border-line px-5 py-3.5 text-sm font-semibold hover:border-ink disabled:opacity-50">Send test to myself</button>
+                  <button type="button" onClick={sendBulk} disabled={sending || !recipients.items.length || !subject.trim() || !message.trim()} className="flex-1 rounded-full bg-ink px-5 py-3.5 text-sm font-semibold text-white hover:bg-flare-600 disabled:opacity-50">
+                    {sending ? `Sending ${progress.done}/${progress.total}…` : `Send to ${recipients.items.length} ${recipients.items.length === 1 ? "person" : "people"}`}
+                  </button>
+                </div>
+                {sending && <div className="h-2 overflow-hidden rounded-full bg-cloud"><div className="h-full rounded-full bg-flare-500 transition-all" style={{ width: `${(progress.done / Math.max(progress.total, 1)) * 100}%` }} /></div>}
+                {mailNote && <p role="status" className="rounded-xl bg-cloud px-4 py-3 text-sm">{mailNote}</p>}
+                {mailFailed.length > 0 && (
+                  <ul className="space-y-1 text-xs text-red-600">{mailFailed.map((f) => <li key={f.email}>{f.email}: {f.error}</li>)}</ul>
+                )}
+                <p className="text-xs text-muted">Gmail allows about 500 emails per day. Emails are sent one per person.</p>
+              </div>
+
+              <div className="lg:sticky lg:top-24">
+                <p className="mb-2 text-sm font-medium">Live preview</p>
+                <iframe title="Email preview" sandbox="" srcDoc={preview} className="h-[640px] w-full rounded-2xl border border-line bg-white" />
+              </div>
             </div>
           )}
         </>

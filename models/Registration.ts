@@ -20,7 +20,9 @@ const RegistrationSchema = new Schema(
     preferredStart: String,
     goal: String,
     source: String,
+    committed: { type: Boolean, default: false },
     consent: { type: Boolean, default: false },
+    emailStatus: { type: String, default: "pending" }, // pending | sent | failed
     status: { type: String, enum: ["new", "contacted", "confirmed", "cancelled"], default: "new", index: true },
   },
   { timestamps: true }

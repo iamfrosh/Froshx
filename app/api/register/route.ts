@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Registration from "@/models/Registration";
 import Draft from "@/models/Draft";
-import { FEES, getCourse, Mode } from "@/lib/academy";
+import { feeFor, getCourse, Mode } from "@/lib/academy";
+import { brandEmail, mailReady, sendMail, withTimeout } from "@/lib/mailer";
+import { newRegistrationAlert, registrationEmail } from "@/lib/emailTemplates";
 import { validateAll, cleanPhone, RegistrationInput } from "@/lib/validate";
 
 function makeRef() {
@@ -11,6 +13,8 @@ function makeRef() {
   for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
   return `FXA-${s}`;
 }
+
+export const maxDuration = 30;
 
 const str = (v: unknown, max = 300) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
@@ -41,6 +45,7 @@ export async function POST(req: Request) {
     preferredStart: str(body.preferredStart, 20),
     goal: str(body.goal, 600),
     source: str(body.source, 60),
+    committed: body.committed === true,
     consent: body.consent === true,
   };
 
@@ -51,6 +56,7 @@ export async function POST(req: Request) {
 
   const course = getCourse(input.course)!;
   const mode = input.mode as Mode;
+  const fee = feeFor(input.course, mode);
 
   try {
     await connectDB();
@@ -71,7 +77,8 @@ export async function POST(req: Request) {
       course: input.course,
       courseTitle: course.title,
       mode,
-      fee: FEES[mode],
+      fee,
+      committed: input.committed,
       fullName: input.fullName,
       email: input.email,
       phone: input.phone,
@@ -92,7 +99,30 @@ export async function POST(req: Request) {
     const draftId = str(body.draftId, 80);
     await Draft.deleteMany({ $or: [{ draftId }, { email: input.email }] });
 
-    return NextResponse.json({ ok: true, ref, fee: FEES[mode], mode, courseTitle: course.title });
+    // Confirmation email to the student + alert to FroshX. A failed email never blocks the registration.
+    const start = input.startAsap ? "As soon as possible" : input.preferredStart
+      ? new Date(input.preferredStart + "T00:00:00").toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })
+      : "To be agreed";
+    const data = { fullName: input.fullName, ref, courseTitle: course.title, mode, fee, start };
+    let emailStatus: "sent" | "failed" = "failed";
+    if (mailReady()) {
+      try {
+        const m = registrationEmail(data);
+        await withTimeout(sendMail({ to: input.email, ...m }), 12000);
+        emailStatus = "sent";
+      } catch (e) {
+        console.error("confirmation email failed", e);
+      }
+      try {
+        const a = newRegistrationAlert({ ...data, email: input.email, phone: input.phone, location: input.location });
+        await withTimeout(sendMail({ to: brandEmail(), ...a }), 8000);
+      } catch (e) {
+        console.error("admin alert email failed", e);
+      }
+    }
+    await Registration.updateOne({ ref }, { emailStatus });
+
+    return NextResponse.json({ ok: true, ref, fee, mode, courseTitle: course.title, emailed: emailStatus === "sent" });
   } catch (err) {
     console.error("register error", err);
     return NextResponse.json({ error: "We couldn’t save your registration right now. Please try again or message us on WhatsApp." }, { status: 500 });

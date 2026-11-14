@@ -49,7 +49,7 @@ export default function PrivacyPage() {
               preferences) so we can contact you and run the course. If you start but do not finish, we may keep your
               partial answers for up to 30 days so we can help you complete it. We also count anonymous page views
               (page visited, device type and referring site) to understand how the site is used. We do not store your
-              IP address for this. Ask us at the email below to see or delete your registration.
+              IP address for this. We email you a confirmation and updates about your course. Ask us at the email below to see or delete your registration.
             </p>
           </div>
 

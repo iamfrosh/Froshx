@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SITE } from "@/lib/site";
-import { ACADEMY, COURSES, FEES, naira } from "@/lib/academy";
+import { ACADEMY, COURSES, MIN_FEES, naira } from "@/lib/academy";
 import { WhatsAppIcon, ArrowUpRightIcon, CheckIcon } from "../Icons";
 import { CertificateIcon, ClockIcon, COURSE_ICONS, MapPinIcon, TargetIcon, WifiIcon, CalendarIcon } from "./AcademyIcons";
 import Reveal from "./Reveal";
@@ -26,7 +26,7 @@ export default function AcademyTeaser() {
               Learn a skill that pays, <span className="bg-flare-gradient bg-clip-text text-transparent">in just {ACADEMY.weeks} weeks.</span>
             </h2>
             <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
-              Registration is open for anyone who wants to start a career in tech. Our beginner-friendly courses teach you by building real things, and you finish with a certificate and a skill you can earn from.
+              Beginner courses in tech and design. Learn by building real things and finish with a certificate.
             </p>
             <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
               <Link href="/register" className="ax-shimmer-btn group inline-flex items-center justify-center gap-2 rounded-full bg-ink px-8 py-4 font-semibold text-white transition hover:bg-flare-600">
@@ -38,10 +38,10 @@ export default function AcademyTeaser() {
               </a>
             </div>
             <ul className="mx-auto mt-9 grid max-w-md grid-cols-2 gap-x-6 gap-y-3 text-left text-sm font-medium text-ink/80 sm:flex sm:max-w-none sm:flex-wrap sm:justify-center">
-              <li className="flex items-center gap-2"><ClockIcon className="h-4 w-4 shrink-0 text-flare-600" /> {ACADEMY.weeks} weeks</li>
-              <li className="flex items-center gap-2"><CertificateIcon className="h-4 w-4 shrink-0 text-flare-600" /> Certificate included</li>
+              <li className="flex items-center gap-2"><ClockIcon className="h-4 w-4 shrink-0 text-flare-600" /> {ACADEMY.weeks}-week courses</li>
+              <li className="flex items-center gap-2"><CertificateIcon className="h-4 w-4 shrink-0 text-flare-600" /> Certificate</li>
+              <li className="flex items-center gap-2"><TargetIcon className="h-4 w-4 shrink-0 text-flare-600" /> Beginner friendly</li>
               <li className="flex items-center gap-2"><CalendarIcon className="h-4 w-4 shrink-0 text-flare-600" /> Flexible start dates</li>
-              <li className="flex items-center gap-2"><TargetIcon className="h-4 w-4 shrink-0 text-flare-600" /> Skills-first lessons</li>
             </ul>
           </div>
         </Reveal>
@@ -53,8 +53,8 @@ export default function AcademyTeaser() {
               <Link key={id} href={`/register?mode=${id}`} className="group rounded-3xl border border-line bg-white p-6 transition hover:-translate-y-0.5 hover:border-flare-300 hover:shadow-soft">
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-flare-50 text-flare-600"><Icon className="h-5 w-5" /></span>
                 <p className="mt-4 text-xs font-bold uppercase tracking-wider text-flare-600">{label}</p>
-                <p className="font-display mt-1 text-4xl font-semibold">{naira(FEES[id])}</p>
-                <p className="mt-1 text-sm text-muted">Per course, per student</p>
+                <p className="font-display mt-1 text-4xl font-semibold"><span className="mr-1 text-base font-medium text-muted">from</span>{naira(MIN_FEES[id])}</p>
+                <p className="mt-1 text-sm text-muted">Per course, per student. Price shown on each course.</p>
               </Link>
             ))}
           </div>
@@ -79,6 +79,7 @@ export default function AcademyTeaser() {
                     </span>
                     <h4 className="font-display mt-5 text-xl font-semibold">{c.title}</h4>
                     <p className="mt-1.5 text-[15px] text-muted">{c.blurb}</p>
+                    <p className="mt-3 text-xs font-semibold text-ink/70">Online {naira(c.fees.online)} · Physical {naira(c.fees.physical)}</p>
                     <ul className="mt-4 space-y-2">
                       {c.skills.slice(0, 3).map((s) => (
                         <li key={s} className="flex items-start gap-2.5 text-sm leading-snug">
@@ -87,7 +88,7 @@ export default function AcademyTeaser() {
                         </li>
                       ))}
                     </ul>
-                    <span className="mt-auto pt-6 text-sm font-semibold text-flare-600 group-hover:underline">Register for this course →</span>
+                    <span className="mt-auto pt-6 text-sm font-semibold text-flare-600 group-hover:underline">See details and register →</span>
                   </Link>
                 </Reveal>
               );
@@ -103,10 +104,10 @@ export default function AcademyTeaser() {
         {/* closing CTA */}
         <Reveal>
           <div className="mx-auto mt-16 max-w-2xl text-center">
-            <h3 className="font-display text-balance text-3xl font-semibold">Ready to start? It takes about 2 minutes.</h3>
-            <p className="mt-3 text-muted">No payment on the form. We contact you to confirm your seat and agree your start date.</p>
+            <h3 className="font-display text-balance text-3xl font-semibold">Ready to start?</h3>
+            <p className="mt-3 text-muted">Registering takes about 2 minutes. Please register only if you’re serious about learning.</p>
             <Link href="/register" className="ax-shimmer-btn mt-7 inline-flex items-center gap-2 rounded-full bg-ink px-9 py-4 font-semibold text-white transition hover:bg-flare-600">
-              Go to registration <ArrowUpRightIcon className="h-4 w-4" />
+              Register now <ArrowUpRightIcon className="h-4 w-4" />
             </Link>
           </div>
         </Reveal>

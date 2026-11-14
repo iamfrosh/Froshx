@@ -4,7 +4,7 @@ import RegisterExperience from "@/components/academy/RegisterExperience";
 export const metadata: Metadata = {
   title: "Register for FroshX Academy",
   description:
-    "Register for a 6-week FroshX Academy course: Data Analysis, Graphics Design, Web Development, Social Media Management, Computer Appreciation or UI/UX Design. Online or physical, certificate included.",
+    "Register for a 6-week beginner course at FroshX Academy: Web Development, App Development, Programming, Data Analysis, UI/UX, Graphics Design, Social Media Management or Computer Appreciation. Certificate included.",
   alternates: { canonical: "/register" },
 };
 

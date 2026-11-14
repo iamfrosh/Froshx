@@ -7,6 +7,9 @@ export const CodeIcon = (p: P) => (<svg {...base} {...p}><path d="m8 7-5 5 5 5" 
 export const ShareIcon = (p: P) => (<svg {...base} {...p}><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="18" cy="18" r="2.5" /><path d="m8.2 10.8 7.6-3.6M8.2 13.2l7.6 3.6" /></svg>);
 export const MonitorIcon = (p: P) => (<svg {...base} {...p}><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8M12 16v4" /></svg>);
 export const PenIcon = (p: P) => (<svg {...base} {...p}><path d="m12 3 7 7-9 9H3v-7l9-9Z" /><path d="m14 5 5 5" /></svg>);
+export const SmartphoneIcon = (p: P) => (<svg {...base} {...p}><rect x="6" y="2.5" width="12" height="19" rx="2.5" /><path d="M10.500 18.500h3" /></svg>);
+export const TerminalIcon = (p: P) => (<svg {...base} {...p}><rect x="3" y="4" width="18" height="16" rx="2" /><path d="m7 9 3 3-3 3M13 15h4" /></svg>);
+export const AlertIcon = (p: P) => (<svg {...base} {...p}><path d="M12 3.500 2.500 20h19L12 3.500Z" /><path d="M12 10v4.500M12 17.500v.01" /></svg>);
 export const CertificateIcon = (p: P) => (<svg {...base} {...p}><rect x="3" y="4" width="18" height="13" rx="2" /><path d="M7 9h10M7 12.5h5" /><path d="m15 17 1.5 4 1.5-2 2 .5-1.5-4" /></svg>);
 export const ClockIcon = (p: P) => (<svg {...base} {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>);
 export const WifiIcon = (p: P) => (<svg {...base} {...p}><path d="M2 9a15 15 0 0 1 20 0M5 12.5a10.5 10.5 0 0 1 14 0M8.5 16a5.5 5.5 0 0 1 7 0" /><circle cx="12" cy="19.5" r="1" fill="currentColor" /></svg>);
@@ -29,4 +32,6 @@ export const COURSE_ICONS: Record<IconKey, (p: P) => JSX.Element> = {
   share: ShareIcon,
   monitor: MonitorIcon,
   pen: PenIcon,
+  app: SmartphoneIcon,
+  terminal: TerminalIcon,
 };

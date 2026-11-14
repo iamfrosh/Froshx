@@ -34,3 +34,12 @@ All in `lib/academy.ts` (course skills/outcomes, `FEES`, `ACADEMY.weeks`, `ACADE
 
 ## Not included yet (ideas)
 Payment (Paystack/Flutterwave), automatic confirmation emails/SMS, seat limits per course, cohorts.
+
+## Email setup (confirmation emails + admin emails)
+Emails are sent from froshxtechnologies@gmail.com through Gmail.
+1. Sign in to that Gmail account → Google Account → **Security** → turn on **2-Step Verification**.
+2. Open https://myaccount.google.com/apppasswords → create an App Password (name it "FroshX website") → copy the 16 characters.
+3. In Vercel add `GMAIL_USER` = `froshxtechnologies@gmail.com` and `GMAIL_APP_PASSWORD` = the 16 characters (spaces are fine). Redeploy.
+4. Open `/admin` → **Send email** → write a message → **Send test to myself**.
+Gmail allows about 500 emails per day. If a confirmation fails, open the registration in `/admin` and press **Resend confirmation**.
+Prices: edit `FEE_STANDARD` and `FEE_TECH` in `lib/academy.ts`.
