@@ -5,6 +5,8 @@ import Draft from "@/models/Draft";
 import { feeFor, getCourse, Mode } from "@/lib/academy";
 import { brandEmail, mailReady, sendMail, withTimeout } from "@/lib/mailer";
 import { newRegistrationAlert, registrationEmail } from "@/lib/emailTemplates";
+import { dashboardUrl, ensureStudent } from "@/lib/student";
+import { SITE } from "@/lib/site";
 import { validateAll, cleanPhone, RegistrationInput } from "@/lib/validate";
 
 function makeRef() {
@@ -103,7 +105,17 @@ export async function POST(req: Request) {
     const start = input.startAsap ? "As soon as possible" : input.preferredStart
       ? new Date(input.preferredStart + "T00:00:00").toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })
       : "To be agreed";
-    const data = { fullName: input.fullName, ref, courseTitle: course.title, mode, fee, start };
+    let dashboard: { email: string; password: string | null } | null = null;
+    try {
+      const info = await ensureStudent(input.email, input.fullName, input.phone);
+      dashboard = { email: info.email, password: info.password };
+    } catch (e) {
+      console.error("student account failed", e);
+    }
+    const data = {
+      fullName: input.fullName, ref, courseTitle: course.title, mode, fee, start,
+      dashboard: dashboard ? { url: dashboardUrl(SITE.url), email: dashboard.email, password: dashboard.password } : undefined,
+    };
     let emailStatus: "sent" | "failed" = "failed";
     if (mailReady()) {
       try {
@@ -122,7 +134,7 @@ export async function POST(req: Request) {
     }
     await Registration.updateOne({ ref }, { emailStatus });
 
-    return NextResponse.json({ ok: true, ref, fee, mode, courseTitle: course.title, emailed: emailStatus === "sent" });
+    return NextResponse.json({ ok: true, ref, fee, mode, courseTitle: course.title, emailed: emailStatus === "sent", dashboard });
   } catch (err) {
     console.error("register error", err);
     return NextResponse.json({ error: "We couldn’t save your registration right now. Please try again or message us on WhatsApp." }, { status: 500 });

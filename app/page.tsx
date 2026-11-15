@@ -1,8 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
-import { SITE, SERVICES, WORK_ITEMS } from "@/lib/site";
-import WorkCard from "@/components/WorkCard";
+import { SITE, SERVICES } from "@/lib/site";
+import ProjectCard from "@/components/ProjectCard";
+import { getProjects } from "@/lib/projects";
 import TeamCard from "@/components/TeamCard";
 import CTABand from "@/components/CTABand";
 import Testimonial from "@/components/Testimonial";
@@ -29,7 +30,12 @@ const PROCESS = [
   { label: "Launch & support", text: "We ship it, index it with search engines, and stay on for support." },
 ];
 
-export default function HomePage() {
+export const revalidate = 60;
+
+export default async function HomePage() {
+  const all = await getProjects();
+  const featured = all.filter((p) => p.featured).slice(0, 4);
+  const projects = featured.length ? featured : all.slice(0, 4);
   return (
     <>
       {/* Hero */}
@@ -166,8 +172,8 @@ export default function HomePage() {
           </div>
 
           <div className="grid md:grid-cols-2 gap-5 mt-12">
-            {WORK_ITEMS.slice(0, 4).map((item) => (
-              <WorkCard key={item.slug} item={item} />
+            {projects.map((p, i) => (
+              <ProjectCard key={p.id} project={p} index={i} />
             ))}
           </div>
         </div>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { WORK_ITEMS } from "@/lib/site";
-import WorkCard from "@/components/WorkCard";
+import ProjectCard from "@/components/ProjectCard";
+import { getProjects } from "@/lib/projects";
 import CTABand from "@/components/CTABand";
 
 export const metadata: Metadata = {
@@ -11,7 +11,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/work" },
 };
 
-export default function WorkPage() {
+export const revalidate = 60;
+
+export default async function WorkPage() {
+  const projects = await getProjects();
   return (
     <>
       <section className="pt-16 pb-16 md:pt-24 md:pb-20">
@@ -32,8 +35,8 @@ export default function WorkPage() {
 
       <section className="pb-24">
         <div className="wrap grid md:grid-cols-2 gap-5">
-          {WORK_ITEMS.map((item) => (
-            <WorkCard key={item.slug} item={item} />
+          {projects.map((p, i) => (
+            <ProjectCard key={p.id} project={p} index={i} />
           ))}
 
           <div className="rounded-3xl border border-dashed border-line p-7 md:p-9 flex flex-col justify-center">

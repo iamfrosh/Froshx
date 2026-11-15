@@ -7,7 +7,7 @@ import { ACADEMY, naira } from "@/lib/academy";
 import { WhatsAppIcon } from "../Icons";
 import { CopyIcon, CalendarIcon, CertificateIcon, ClockIcon, ShieldIcon, UsersIcon } from "./AcademyIcons";
 
-export type RegResult = { ref: string; courseTitle: string; mode: "online" | "physical"; fee: number; emailed?: boolean };
+export type RegResult = { ref: string; courseTitle: string; mode: "online" | "physical"; fee: number; emailed?: boolean; dashboard?: { email: string; password: string | null } | null };
 
 const COLORS = ["#F97316", "#FDB463", "#15130F", "#FFD9A8", "#EA5B0C", "#22C55E"];
 
@@ -58,6 +58,24 @@ export default function SuccessCard({ result, name, email, start, onAnother }: {
           {result.emailed ? <>A confirmation was sent to <b className="text-ink">{email}</b>. Check spam if you can’t see it.</> : <>Keep your reference number. We will contact you on the number you gave us.</>}
         </p>
       </div>
+
+      {result.dashboard && (
+        <div className="relative mt-6 rounded-2xl border border-line bg-white p-5 sm:p-6">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-ink text-flare-300"><ShieldIcon className="h-5 w-5" /></span>
+            <div>
+              <p className="font-display text-lg font-semibold leading-tight">Your student dashboard</p>
+              <p className="text-[13px] text-muted">Log in to see your status, start date and messages.</p>
+            </div>
+          </div>
+          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+            <div className="rounded-xl bg-cloud px-4 py-3"><dt className="text-[11px] text-muted">Login email</dt><dd className="break-all font-semibold">{result.dashboard.email}</dd></div>
+            <div className="rounded-xl bg-cloud px-4 py-3"><dt className="text-[11px] text-muted">Password</dt><dd className="font-semibold tracking-wide">{result.dashboard.password ?? "The one you chose earlier"}</dd></div>
+          </dl>
+          {result.dashboard.password && <p className="mt-3 text-[13px] text-muted">This is a starting password. You will be asked to <b className="text-ink">change it after you log in</b>.</p>}
+          <Link href="/dashboard/login" className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-flare-600 sm:w-auto">Open my dashboard</Link>
+        </div>
+      )}
 
       <div className="relative mt-6 grid gap-3 sm:grid-cols-2">
         {[

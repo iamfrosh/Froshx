@@ -89,7 +89,7 @@ export default function SiteEffects() {
 
   if (!toast) return null;
   return (
-    <div role="status" className="ax-rise fixed bottom-4 left-4 right-4 z-[90] sm:right-auto sm:max-w-sm">
+    <div role="status" className="ax-rise fixed bottom-24 left-4 right-4 z-[90] sm:right-auto sm:max-w-sm">
       <div className="flex items-start gap-3 rounded-2xl border border-flare-100 bg-white p-4 shadow-soft">
         <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-flare-50 text-flare-600">
           <BellIcon className="h-5 w-5" />

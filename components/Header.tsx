@@ -9,6 +9,8 @@ import { MenuIcon, CloseIcon, PhoneIcon, WhatsAppIcon } from "./Icons";
 import PageLoader from "./academy/PageLoader";
 import SiteEffects from "./academy/SiteEffects";
 import RecruitBanner from "./academy/RecruitBanner";
+import WhatsAppFloat from "./WhatsAppFloat";
+import MusicPlayer from "./MusicPlayer";
 
 export default function Header() {
   const pathname = usePathname();
@@ -29,6 +31,8 @@ export default function Header() {
     <PageLoader />
     <SiteEffects />
     <RecruitBanner />
+    <WhatsAppFloat />
+    <MusicPlayer />
     <header
       className={`sticky top-0 z-50 transition-colors duration-300 ${
         scrolled ? "bg-white/90 backdrop-blur border-b border-line" : "bg-transparent"
@@ -83,6 +87,9 @@ export default function Header() {
           >
             <WhatsAppIcon className="w-5 h-5" />
           </a>
+          <Link href="/dashboard/login" className="text-sm font-semibold text-muted hover:text-ink transition-colors">
+            Student login
+          </Link>
           <Link
             href="/contact"
             className="inline-flex items-center rounded-full bg-ink text-white text-sm font-semibold px-5 py-2.5 hover:bg-flare-600 transition-colors"
@@ -129,6 +136,9 @@ export default function Header() {
             >
               <WhatsAppIcon className="w-4 h-4 text-[#25D366]" /> Chat on WhatsApp
             </a>
+            <Link href="/dashboard/login" className="py-3 text-base font-medium text-ink">
+              Student login
+            </Link>
             <Link
               href="/contact"
               className="mt-2 inline-flex justify-center items-center rounded-full bg-ink text-white text-sm font-semibold px-5 py-3"

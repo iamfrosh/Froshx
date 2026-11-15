@@ -33,6 +33,11 @@ export default function Footer() {
                   </Link>
                 </li>
               ))}
+              <li>
+                <Link href="/dashboard/login" className="text-sm text-white/70 hover:text-flare-300 transition-colors">
+                  Student login
+                </Link>
+              </li>
             </ul>
           </div>
 

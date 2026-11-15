@@ -4,18 +4,22 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { COURSES, naira } from "@/lib/academy";
 import "../academy/academy.css";
 import { messageEmail } from "@/lib/emailTemplates";
+import ProjectsAdmin from "./ProjectsAdmin";
+import MusicAdmin from "./MusicAdmin";
 import { WhatsAppIcon } from "../Icons";
 import { UsersIcon, ChartIcon, ClockIcon, BellIcon, ShieldIcon } from "../academy/AcademyIcons";
 
 type Reg = {
   _id: string; ref: string; courseTitle: string; mode: string; fee: number; fullName: string; email: string; phone: string;
   gender?: string; ageRange?: string; location?: string; education?: string; device?: string; experience?: string;
-  preferredStart?: string; goal?: string; source?: string; status: string; createdAt: string; emailStatus?: string;
+  preferredStart?: string; goal?: string; source?: string; status: string; createdAt: string; emailStatus?: string; startDate?: string; adminNote?: string;
 };
 type Draft = { _id: string; fullName?: string; email?: string; phone?: string; course?: string; mode?: string; step?: number; updatedAt: string };
 type Count = { _id: string; count: number };
+type Student = { email: string; mustChangePassword: boolean; lastLoginAt: string | null };
 type Data = {
   registrations: Reg[];
+  students: Student[];
   drafts: Draft[];
   stats: {
     totalRegs: number; regsToday: number; regsWeek: number; draftCount: number;
@@ -78,6 +82,50 @@ function Bars({ items, total }: { items: Count[]; total: number }) {
   );
 }
 
+function RegExtras({ r, student, onSaved }: { r: Reg; student?: Student; onSaved: () => void }) {
+  const [startDate, setStartDate] = useState(r.startDate || "");
+  const [note, setNote] = useState(r.adminNote || "");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const save = async () => {
+    setBusy(true); setMsg("");
+    const res = await fetch("/api/admin/data", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: r._id, startDate, adminNote: note }) });
+    setBusy(false);
+    setMsg(res.ok ? "Saved. The student sees this on their dashboard." : "Could not save.");
+    onSaved();
+  };
+  const reset = async () => {
+    if (!window.confirm(`Reset ${r.fullName}'s dashboard password to the default? They will have to choose a new one.`)) return;
+    const res = await fetch("/api/admin/students", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "reset", email: r.email }) });
+    const json = await res.json().catch(() => ({}));
+    setMsg(res.ok ? "Password reset to the default." : json.error || "Could not reset.");
+    onSaved();
+  };
+
+  return (
+    <div className="grid gap-4 border-t border-line px-5 py-5 sm:grid-cols-2">
+      <div>
+        <label className="mb-2 block text-xs font-semibold text-muted">Confirmed start date (shown to the student)</label>
+        <input className="ax-input" value={startDate} onChange={(e) => setStartDate(e.target.value)} placeholder="e.g. Monday 3 March 2026" maxLength={80} />
+        <label className="mb-2 mt-4 block text-xs font-semibold text-muted">Message to the student (optional)</label>
+        <textarea className="ax-input resize-none" rows={3} value={note} onChange={(e) => setNote(e.target.value)} maxLength={600} placeholder="e.g. Please bring a laptop on the first day." />
+        <button onClick={save} disabled={busy} className="mt-3 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-flare-600 disabled:opacity-60">{busy ? "Saving…" : "Save for dashboard"}</button>
+      </div>
+      <div className="text-sm">
+        <p className="text-xs font-semibold text-muted">Student dashboard</p>
+        {student ? (
+          <p className="mt-2 leading-relaxed">Account created. {student.lastLoginAt ? <>Last login: <b>{new Date(student.lastLoginAt).toLocaleString("en-NG", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</b>.</> : <>Has <b>not logged in</b> yet.</>} {student.mustChangePassword ? "Still on the default password." : "Has chosen their own password."}</p>
+        ) : (
+          <p className="mt-2 text-muted">No dashboard account yet. Use “Create accounts” in the Send email tab.</p>
+        )}
+        {student && <button onClick={reset} className="mt-3 rounded-full border border-line px-4 py-2 font-semibold hover:border-ink">Reset password to default</button>}
+        {msg && <p className="mt-3 rounded-xl bg-white px-3 py-2 text-[13px]">{msg}</p>}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [password, setPassword] = useState("");
@@ -88,7 +136,7 @@ export default function AdminDashboard() {
   const [q, setQ] = useState("");
   const [courseF, setCourseF] = useState("");
   const [statusF, setStatusF] = useState("");
-  const [tab, setTab] = useState<"regs" | "drafts" | "email">("regs");
+  const [tab, setTab] = useState<"regs" | "drafts" | "email" | "projects" | "music">("regs");
   const [open, setOpen] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
@@ -139,6 +187,7 @@ export default function AdminDashboard() {
   }, [data, q, courseF, statusF]);
 
   // ---- email composer
+  const studentByEmail = useMemo(() => Object.fromEntries((data?.students || []).map((x) => [x.email.toLowerCase(), x])), [data]);
   const [aud, setAud] = useState<"all" | "course" | "status" | "drafts" | "one">("all");
   const [audCourse, setAudCourse] = useState("");
   const [audStatus, setAudStatus] = useState("new");
@@ -217,6 +266,31 @@ export default function AdminDashboard() {
       setMailNote(`Stopped after ${sent} sent. ${e instanceof Error ? e.message : ""}`);
     }
     setMailFailed(failed); setSending(false);
+  };
+
+  const createAccounts = async () => {
+    const res = await fetch("/api/admin/students", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "create-missing" }) });
+    const json = await res.json().catch(() => ({}));
+    setMailNote(res.ok ? `Dashboard accounts ready. ${json.created} new, ${json.total} people in total.` : json.error || "Could not create accounts.");
+    load();
+  };
+
+  const sendInvites = async () => {
+    const n = recipients.items.length;
+    if (!n || recipients.target !== "registrations") return;
+    if (!window.confirm(`Send the dashboard invitation to ${n} ${n === 1 ? "person" : "people"}?`)) return;
+    setSending(true); setMailNote(""); setMailFailed([]); setProgress({ done: 0, total: n });
+    let sent = 0; const failed: { email: string; error: string }[] = [];
+    try {
+      for (let i = 0; i < n; i += 15) {
+        const ids = recipients.items.slice(i, i + 15).map((x) => x.id);
+        const r = await mailCall({ mode: "dashboard", ids });
+        sent += r.sent; failed.push(...r.failed);
+        setProgress({ done: Math.min(i + 15, n), total: n });
+      }
+      setMailNote(`Done. ${sent} invitation${sent === 1 ? "" : "s"} sent${failed.length ? `, ${failed.length} failed` : ""}.`);
+    } catch (e) { setMailNote(`Stopped after ${sent} sent. ${e instanceof Error ? e.message : ""}`); }
+    setMailFailed(failed); setSending(false); load();
   };
 
   const resend = async (id: string) => {
@@ -321,8 +395,8 @@ export default function AdminDashboard() {
           </div>
 
           {/* tabs */}
-          <div className="mt-10 flex gap-2 border-b border-line">
-            {([["regs", `Registrations (${data.registrations.length})`], ["drafts", `Unfinished (${data.drafts.length})`], ["email", "Send email"]] as const).map(([k, l]) => (
+          <div className="mt-10 flex gap-2 overflow-x-auto whitespace-nowrap border-b border-line">
+            {([["regs", `Registrations (${data.registrations.length})`], ["drafts", `Unfinished (${data.drafts.length})`], ["email", "Send email"], ["projects", "Projects"], ["music", "Music"]] as const).map(([k, l]) => (
               <button key={k} onClick={() => setTab(k)} className={`-mb-px border-b-2 px-4 py-3 text-sm font-semibold transition ${tab === k ? "border-flare-500 text-ink" : "border-transparent text-muted hover:text-ink"}`}>{l}</button>
             ))}
           </div>
@@ -373,7 +447,8 @@ export default function AdminDashboard() {
                         <div className="flex flex-wrap items-center gap-3 border-t border-line px-5 py-4 text-sm">
                           <span className="text-muted">Confirmation email: <b className={r.emailStatus === "sent" ? "text-green-700" : "text-red-600"}>{r.emailStatus === "sent" ? "sent" : r.emailStatus === "failed" ? "failed" : "pending"}</b></span>
                           <button onClick={() => resend(r._id)} className="rounded-full border border-line px-4 py-2 font-semibold hover:border-ink">Resend confirmation</button>
-                        </div></div>
+                        </div>
+                        <RegExtras r={r} student={studentByEmail[r.email.toLowerCase()]} onSaved={load} /></div>
                       )}
                     </li>
                   ))}
@@ -408,6 +483,9 @@ export default function AdminDashboard() {
               )}
             </div>
           )}
+
+          {tab === "projects" && <ProjectsAdmin />}
+          {tab === "music" && <MusicAdmin />}
 
           {tab === "email" && (
             <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_1fr]">
@@ -486,6 +564,17 @@ export default function AdminDashboard() {
                   <ul className="space-y-1 text-xs text-red-600">{mailFailed.map((f) => <li key={f.email}>{f.email}: {f.error}</li>)}</ul>
                 )}
                 <p className="text-xs text-muted">Gmail allows about 500 emails per day. Emails are sent one per person.</p>
+
+                {aud !== "drafts" && (
+                  <div className="rounded-2xl border border-flare-100 bg-flare-50 p-4">
+                    <p className="font-display font-semibold">Student dashboard invitation</p>
+                    <p className="mt-1 text-sm text-muted">Tells the selected people they can log in, with their email and the starting password. Each person gets one email, even if they registered twice.</p>
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                      <button type="button" onClick={createAccounts} disabled={sending} className="rounded-full border border-line bg-white px-4 py-2.5 text-sm font-semibold hover:border-ink disabled:opacity-50">Create accounts for everyone registered</button>
+                      <button type="button" onClick={sendInvites} disabled={sending || !recipients.items.length} className="rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:bg-flare-600 disabled:opacity-50">Send dashboard invitation to {recipients.items.length}</button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="lg:sticky lg:top-24">

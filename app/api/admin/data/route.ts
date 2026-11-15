@@ -4,6 +4,7 @@ import { isAdmin } from "@/lib/adminAuth";
 import Registration from "@/models/Registration";
 import Draft from "@/models/Draft";
 import Visit from "@/models/Visit";
+import Student from "@/models/Student";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export async function GET() {
       registrations, drafts, totalRegs, regsToday, regsWeek,
       byCourse, byMode, byStatus,
       viewsTotal, viewsToday, viewsWeek, uniqueTotal, uniqueToday, uniqueWeek,
-      daily, topPages, sources,
+      daily, topPages, sources, students,
     ] = await Promise.all([
       Registration.find().sort({ createdAt: -1 }).limit(1000).lean(),
       Draft.find().sort({ updatedAt: -1 }).limit(200).lean(),
@@ -62,11 +63,13 @@ export async function GET() {
         { $sort: { count: -1 } },
         { $limit: 6 },
       ]),
+      Student.find({}, { email: 1, mustChangePassword: 1, lastLoginAt: 1 }).lean(),
     ]);
 
     return NextResponse.json({
       registrations: registrations.map((r) => ({ ...r, _id: String(r._id) })),
       drafts: drafts.map((d) => ({ ...d, _id: String(d._id) })),
+      students: students.map((x) => ({ email: x.email, mustChangePassword: x.mustChangePassword, lastLoginAt: x.lastLoginAt || null })),
       stats: {
         totalRegs, regsToday, regsWeek, byCourse, byMode, byStatus,
         visits: { viewsTotal, viewsToday, viewsWeek, uniqueTotal, uniqueToday, uniqueWeek, daily, topPages, sources },
@@ -81,11 +84,17 @@ export async function GET() {
 
 export async function PATCH(req: Request) {
   if (!isAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { id, status } = (await req.json().catch(() => ({}))) as { id?: string; status?: string };
-  if (!id || !["new", "contacted", "confirmed", "cancelled"].includes(status || "")) {
-    return NextResponse.json({ error: "Bad request" }, { status: 400 });
+  const b = (await req.json().catch(() => ({}))) as { id?: string; status?: string; startDate?: string; adminNote?: string };
+  if (!b.id) return NextResponse.json({ error: "Bad request" }, { status: 400 });
+  const update: Record<string, string> = {};
+  if (b.status !== undefined) {
+    if (!["new", "contacted", "confirmed", "cancelled"].includes(b.status)) return NextResponse.json({ error: "Bad request" }, { status: 400 });
+    update.status = b.status;
   }
+  if (typeof b.startDate === "string") update.startDate = b.startDate.trim().slice(0, 80);
+  if (typeof b.adminNote === "string") update.adminNote = b.adminNote.trim().slice(0, 600);
+  if (!Object.keys(update).length) return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   await connectDB();
-  await Registration.findByIdAndUpdate(id, { status });
+  await Registration.findByIdAndUpdate(b.id, update);
   return NextResponse.json({ ok: true });
 }

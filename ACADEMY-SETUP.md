@@ -43,3 +43,26 @@ Emails are sent from froshxtechnologies@gmail.com through Gmail.
 4. Open `/admin` → **Send email** → write a message → **Send test to myself**.
 Gmail allows about 500 emails per day. If a confirmation fails, open the registration in `/admin` and press **Resend confirmation**.
 Prices: edit `FEE_STANDARD` and `FEE_TECH` in `lib/academy.ts`.
+
+## Projects (screenshots + link previews) managed in /admin
+`/admin` → **Projects**: paste a link, press **Fetch preview** (reads the site's own title/description/preview image),
+or choose **Auto screenshot**, or **Upload my own** screenshot. A live card shows exactly how it will look.
+First time: press **Import my current projects** to bring in the ones already on the site, then add screenshots.
+The homepage shows the projects ticked "Show on homepage"; the Work page shows all visible projects. Changes appear instantly.
+
+## Student dashboard
+- Students log in at `/dashboard/login` with their registration email and the starting password **1234556789**.
+- On first login they must choose their own password. Passwords are stored hashed.
+- The dashboard shows their registration status, start date and your message. Set those in `/admin` → registration → open the row.
+- Change the starting password with the Vercel variable `STUDENT_DEFAULT_PASSWORD` (optional).
+- Already-registered people: `/admin` → **Send email** → **Create accounts for everyone registered**, then **Send dashboard invitation**.
+- Forgot password: open the registration in `/admin` and press **Reset password to default**.
+- Limit: login proves someone knows the password, not that they own the email address. Add email verification later for stronger security.
+
+## Website music
+`/admin` → **Music**: pause or turn on for all visitors, set the volume, choose the built-in beat, upload an MP3 (max 4 MB) or paste a direct link.
+Browsers only allow sound after a first tap or click, so it starts on the first tap. Visitors get a mute button (bottom left).
+Only use music you own or are licensed to use.
+
+## Floating WhatsApp button
+Appears bottom-right on every public page. Number comes from `SITE.whatsapp` in `lib/site.ts`.

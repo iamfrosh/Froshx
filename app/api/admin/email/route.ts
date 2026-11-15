@@ -4,14 +4,16 @@ import { isAdmin } from "@/lib/adminAuth";
 import Registration from "@/models/Registration";
 import Draft from "@/models/Draft";
 import { brandEmail, mailReady, sendMail, withTimeout } from "@/lib/mailer";
-import { firstName, messageEmail, registrationEmail } from "@/lib/emailTemplates";
+import { dashboardInviteEmail, firstName, messageEmail, registrationEmail } from "@/lib/emailTemplates";
+import { dashboardUrl, ensureStudent } from "@/lib/student";
+import { SITE } from "@/lib/site";
 import { getCourse } from "@/lib/academy";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 type Body = {
-  mode?: "bulk" | "test" | "resend";
+  mode?: "bulk" | "test" | "resend" | "dashboard";
   target?: "registrations" | "drafts";
   ids?: string[];
   id?: string;
@@ -38,10 +40,37 @@ export async function POST(req: Request) {
       const r = await Registration.findById(b.id).lean();
       if (!r) return NextResponse.json({ error: "Registration not found." }, { status: 404 });
       const start = r.preferredStart || "To be agreed";
-      const m = registrationEmail({ fullName: r.fullName, ref: r.ref, courseTitle: r.courseTitle, mode: r.mode, fee: r.fee, start });
+      const info = await ensureStudent(r.email, r.fullName, r.phone);
+      const m = registrationEmail({ fullName: r.fullName, ref: r.ref, courseTitle: r.courseTitle, mode: r.mode, fee: r.fee, start, dashboard: { url: dashboardUrl(SITE.url), email: info.email, password: info.password } });
       await withTimeout(sendMail({ to: r.email, ...m }), 12000);
       await Registration.updateOne({ _id: r._id }, { emailStatus: "sent" });
       return NextResponse.json({ ok: true, sent: 1, failed: [] });
+    }
+
+    // ---- dashboard invitations (one email per person, even if they registered for several courses)
+    if (b.mode === "dashboard") {
+      const ids = Array.isArray(b.ids) ? b.ids.slice(0, MAX_PER_REQUEST) : [];
+      if (!ids.length) return NextResponse.json({ error: "No recipients." }, { status: 400 });
+      const docs = await Registration.find({ _id: { $in: ids } }).lean();
+      const seen = new Set<string>();
+      const people = docs.filter((r) => (seen.has(r.email) ? false : (seen.add(r.email), true)));
+      const failed: { email: string; error: string }[] = [];
+      let sent = 0;
+      for (let i = 0; i < people.length; i += 3) {
+        const chunk = people.slice(i, i + 3);
+        const results = await Promise.allSettled(
+          chunk.map(async (r) => {
+            const info = await ensureStudent(r.email, r.fullName, r.phone);
+            const m = dashboardInviteEmail({ fullName: r.fullName, info: { url: dashboardUrl(SITE.url), email: info.email, password: info.password } });
+            return withTimeout(sendMail({ to: r.email, ...m }), 15000);
+          })
+        );
+        results.forEach((res, k) => {
+          if (res.status === "fulfilled") sent++;
+          else failed.push({ email: chunk[k].email, error: res.reason instanceof Error ? res.reason.message : "Failed" });
+        });
+      }
+      return NextResponse.json({ ok: true, sent, failed });
     }
 
     const subject = (b.subject || "").trim().slice(0, 150);

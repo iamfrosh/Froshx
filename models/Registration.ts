@@ -22,6 +22,8 @@ const RegistrationSchema = new Schema(
     source: String,
     committed: { type: Boolean, default: false },
     consent: { type: Boolean, default: false },
+    startDate: String, // confirmed by admin, shown on the student dashboard
+    adminNote: String, // message from the FroshX team, shown on the student dashboard
     emailStatus: { type: String, default: "pending" }, // pending | sent | failed
     status: { type: String, enum: ["new", "contacted", "confirmed", "cancelled"], default: "new", index: true },
   },
