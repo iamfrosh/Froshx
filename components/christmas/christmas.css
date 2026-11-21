@@ -1,0 +1,104 @@
+/* FroshX Christmas edition. Everything here only shows when <html> has the "xmas" class. */
+:root { --xm-green: #0F3D2E; --xm-green-2: #14573F; --xm-gold: #E8B84A; --xm-red: #C8102E; }
+
+.xmas-only { display: none; }
+html.xmas .xmas-only { display: block; }
+html.xmas .xmas-hide { display: none; }
+
+@keyframes xm-twinkle { 0%,100% { opacity: .45; transform: scale(.92); } 50% { opacity: 1; transform: scale(1.06); } }
+@keyframes xm-swing { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+@keyframes xm-hat { 0%,78% { transform: rotate(-16deg) translateY(0); } 82% { transform: rotate(-5deg) translateY(-3px); } 86% { transform: rotate(-24deg) translateY(0); } 90% { transform: rotate(-11deg) translateY(-2px); } 94%,100% { transform: rotate(-16deg) translateY(0); } }
+@keyframes xm-on { from { opacity: .16; } to { opacity: 1; } }
+@keyframes xm-glow-pulse { 0%,100% { opacity: .55; transform: scale(.95); } 50% { opacity: 1; transform: scale(1.08); } }
+@keyframes xm-reveal { from { opacity: 0; transform: translateY(18px); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes xm-bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes xm-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes xm-pop { 0% { opacity: 0; transform: translateY(14px) scale(.92); } 100% { opacity: 1; transform: none; } }
+@keyframes xm-wiggle { 0%,86%,100% { transform: rotate(0); } 89% { transform: rotate(-10deg); } 92% { transform: rotate(9deg); } 95% { transform: rotate(-6deg); } 98% { transform: rotate(3deg); } }
+@keyframes xm-rays { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+@keyframes xm-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes xm-spin { to { transform: rotate(360deg); } }
+
+/* ---- Santa hat on the logo ---- */
+html.xmas a[aria-label="FroshX home"] { position: relative; }
+.xm-hat { position: absolute; left: -7px; top: -13px; width: 28px; height: auto; pointer-events: none; transform-origin: 30% 90%; transform: rotate(-16deg); animation: xm-hat 7s ease-in-out infinite; filter: drop-shadow(0 1px 1px rgba(0,0,0,.22)); z-index: 2; }
+@media (min-width: 768px) { .xm-hat { left: -8px; top: -15px; width: 31px; } }
+
+/* ---- lights along the header ---- */
+.xm-lights { position: absolute; left: 0; right: 0; top: 100%; height: 30px; pointer-events: none; z-index: 3; }
+.xm-row { display: flex; overflow: hidden; height: 26px; width: 100%; }
+.xm-cell { position: relative; flex: 0 0 56px; height: 26px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='14' viewBox='0 0 56 14'%3E%3Cpath d='M0 1 Q28 15 56 1' fill='none' stroke='%231B4D3E' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat center top; }
+.xm-bulb { position: absolute; left: 50%; top: 9px; width: 8px; height: 12px; margin-left: -4px; border-radius: 50% 50% 46% 46% / 38% 38% 62% 62%; background: var(--c); box-shadow: 0 0 9px 3px var(--c); animation: xm-twinkle 2.6s ease-in-out var(--d, 0s) infinite; }
+.xm-bulb::before { content: ""; position: absolute; left: 50%; top: -3px; width: 4px; height: 4px; margin-left: -2px; background: #1B4D3E; border-radius: 1px; }
+.xm-star { position: absolute; left: 50%; top: 8px; margin-left: -7px; width: 14px; height: 14px; color: #FFC857; filter: drop-shadow(0 0 5px rgba(255,200,87,.9)); animation: xm-twinkle 3.1s ease-in-out var(--d, 0s) infinite; }
+.c0 { --c: #E63946; } .c1 { --c: #FFC857; } .c2 { --c: #34C38F; } .c3 { --c: #F5F7FA; } .c4 { --c: #FF8A3D; }
+@media (max-width: 640px) { .xm-cell { flex-basis: 40px; } .xm-row, .xm-cell { height: 24px; } }
+
+/* hanging ornaments (fade away once the visitor scrolls) */
+.xm-orns { position: absolute; left: 0; right: 0; top: 4px; height: 0; transition: opacity .5s; }
+.xm-orns.xm-gone { opacity: 0; }
+.xm-orn { position: absolute; top: 0; transform-origin: 50% 0; animation: xm-swing 4.6s ease-in-out var(--d, 0s) infinite alternate; }
+.xm-orn i { display: block; width: 1px; height: var(--len, 34px); margin: 0 auto; background: rgba(27,77,62,.55); }
+.xm-orn b { display: block; width: 24px; height: 24px; margin-left: -11.5px; border-radius: 50%; background: radial-gradient(circle at 32% 28%, #fff 0 8%, var(--c) 9% 60%, color-mix(in srgb, var(--c) 70%, #000) 100%); box-shadow: 0 4px 10px -2px rgba(0,0,0,.35); position: relative; }
+.xm-orn b::before { content: ""; position: absolute; left: 50%; top: -4px; width: 8px; height: 5px; margin-left: -4px; border-radius: 2px 2px 0 0; background: #E8B84A; }
+@media (max-width: 640px) { .xm-orn.xm-hide-sm { display: none; } .xm-orn b { width: 20px; height: 20px; margin-left: -9.5px; } }
+
+/* ---- snow caps on dark sections and the Academy block ---- */
+html.xmas section.bg-ink, html.xmas #academy { position: relative; }
+html.xmas section.bg-ink::before, html.xmas #academy::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 22px; z-index: 2; pointer-events: none; background: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='160'%20height='22'%20viewBox='0%200%20160%2022'%3E%3Cpath%20d='M0%200H160V5a10%2010%200%200%201%20-20%200a7%207%200%200%201%20-14%200a12%2012%200%200%201%20-24%200a9%209%200%200%201%20-18%200a11%2011%200%200%201%20-22%200a8%208%200%200%201%20-16%200a13%2013%200%200%201%20-26%200a10%2010%200%200%201%20-20%200Z'%20fill='white'/%3E%3C/svg%3E") repeat-x top / 160px 22px; }
+
+/* ---- footer ---- */
+.xm-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 14px; padding: 22px 20px 26px; border-top: 1px solid rgba(255,255,255,.08); background: radial-gradient(ellipse at 50% 0%, rgba(20,87,63,.6), transparent 70%); text-align: center; position: relative; }
+.xm-footer svg.tree { width: 44px; height: auto; filter: drop-shadow(0 0 10px rgba(255,214,102,.35)); }
+.xm-footer p { color: #F6E7B8; font-size: 14px; font-weight: 600; letter-spacing: .01em; text-shadow: 0 0 14px rgba(232,184,74,.55); animation: xm-glow-pulse 4s ease-in-out infinite; }
+.xm-flake { color: #BEE3F8; font-size: 18px; display: inline-block; animation: xm-spin 14s linear infinite; }
+
+/* ---- tree lights / star ---- */
+.xm-bulb-t { opacity: .16; animation: xm-on .5s ease forwards, xm-twinkle 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.xm-star-glow { transform-box: fill-box; transform-origin: center; animation: xm-glow-pulse 2.8s ease-in-out infinite; }
+.xm-star { transform-box: fill-box; transform-origin: center; animation: xm-twinkle 2.8s ease-in-out infinite; }
+
+/* ---- button glow + interactions ---- */
+html.xmas a.rounded-full, html.xmas button.rounded-full { transition: box-shadow .25s ease, transform .2s ease, background-color .2s ease, color .2s ease, border-color .2s ease; }
+html.xmas a.rounded-full:hover, html.xmas button.rounded-full:not(:disabled):hover { box-shadow: 0 0 0 3px rgba(232,184,74,.22), 0 10px 30px -8px rgba(232,184,74,.65); }
+html.xmas a.rounded-full:active, html.xmas button.rounded-full:not(:disabled):active { transform: scale(.98); }
+html.xmas :focus-visible { outline-color: #E8B84A; }
+
+/* loading spinners become snowflakes */
+html.xmas span.animate-spin.border-t-flare-500 { border: 0 !important; background: none; display: inline-flex; align-items: center; justify-content: center; }
+html.xmas span.animate-spin.border-t-flare-500::before { content: "\2744\FE0E"; font-size: 30px; line-height: 1; color: #6FB1D8; }
+
+/* ---- loader ---- */
+.xm-loader { position: fixed; inset: 0; z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 35%, #FFFFFF 0%, #F4FBF7 55%, #EAF5EE 100%); transition: opacity .5s ease; }
+.xm-loader canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.xm-bar { margin-top: 26px; height: 4px; width: 170px; border-radius: 999px; background: #D9E8DF; overflow: hidden; }
+.xm-bar > span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #0F6B4A, #E8B84A, #F97316); transform-origin: left; animation: xm-bar 1.7s cubic-bezier(.4,0,.2,1) forwards; }
+
+/* ---- welcome overlay ---- */
+.xm-welcome { position: fixed; inset: 0; z-index: 400; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; color: #fff; background: radial-gradient(ellipse at 50% 28%, #14573F 0%, #0B2F23 55%, #07201A 100%); animation: xm-fade .5s ease both; transition: opacity .45s ease; }
+.xm-welcome.xm-out { opacity: 0; }
+.xm-welcome canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.xm-w-in { position: relative; max-width: 640px; }
+.xm-w { opacity: 0; animation: xm-reveal .9s cubic-bezier(.16,1,.3,1) forwards; animation-delay: var(--d, 0s); }
+.xm-w-h { background: linear-gradient(180deg, #FFF3C9, #E8B84A); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
+.xm-w-bar { margin: 30px auto 0; height: 3px; width: 160px; border-radius: 999px; background: rgba(255,255,255,.18); overflow: hidden; }
+.xm-w-bar span { display: block; height: 100%; background: linear-gradient(90deg, #E8B84A, #FFF3C9); transform-origin: left; animation: xm-bar var(--dur, 5.5s) linear forwards; }
+
+/* ---- gift ---- */
+.xm-gift { position: fixed; right: 18px; bottom: 96px; z-index: 80; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid #E7E2DA; box-shadow: 0 8px 24px -8px rgba(200,16,46,.45); animation: xm-wiggle 6s ease-in-out infinite; transition: transform .2s ease; }
+.xm-gift:hover { transform: scale(1.08); }
+.xm-modal { position: fixed; inset: 0; z-index: 350; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(7,32,26,.72); backdrop-filter: blur(6px); animation: xm-fade .3s ease both; }
+.xm-card { position: relative; width: 100%; max-width: 400px; border-radius: 28px; padding: 26px 24px 28px; text-align: center; background: linear-gradient(180deg, #fff, #FFF8EE); box-shadow: 0 30px 80px -20px rgba(0,0,0,.6); animation: xm-pop .5s cubic-bezier(.16,1,.3,1) both; overflow: hidden; }
+.xm-rays { position: absolute; left: 50%; top: 18px; width: 260px; height: 260px; margin-left: -130px; opacity: 0; background: repeating-conic-gradient(from 0deg, rgba(232,184,74,.5) 0 8deg, transparent 8deg 24deg); -webkit-mask: radial-gradient(circle, #000 0 30%, transparent 70%); mask: radial-gradient(circle, #000 0 30%, transparent 70%); transition: opacity .6s ease .3s; animation: xm-rays 18s linear infinite; }
+.xm-open .xm-rays { opacity: 1; }
+.xm-lid { transform-origin: 30% 100%; transition: transform .8s cubic-bezier(.34,1.56,.64,1); }
+.xm-open .xm-lid { transform: translate(-6px, -44px) rotate(-16deg); }
+.xm-msg { opacity: 0; transform: translateY(12px); transition: opacity .6s ease, transform .6s ease; }
+.xm-open .xm-msg { opacity: 1; transform: none; transition-delay: .7s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .xm-hat, .xm-bulb, .xm-star, .xm-orn, .xm-gift, .xm-footer p, .xm-flake, .xm-rays, .xm-bulb-t, .xm-star-glow { animation: none !important; }
+  .xm-bulb-t { opacity: 1; }
+  .xm-w { opacity: 1; animation: none; }
+  .xm-lid, .xm-msg { transition: none; }
+}
