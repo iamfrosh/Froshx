@@ -1,0 +1,14 @@
+.fx-chat-launch { position: fixed; right: 16px; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); z-index: 82; }
+html.xmas .fx-chat-launch { bottom: calc(160px + env(safe-area-inset-bottom, 0px)); }
+.fx-chat-panel { position: fixed; z-index: 340; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: min(392px, calc(100vw - 24px)); height: min(600px, calc(100dvh - 24px)); display: flex; flex-direction: column; overflow: hidden; border-radius: 26px; background: #fff; border: 1px solid #E7E2DA; box-shadow: 0 30px 80px -20px rgba(21,19,15,.45); animation: fx-chat-in .35s cubic-bezier(.16,1,.3,1) both; }
+@media (min-width: 640px) { .fx-chat-panel { right: 20px; bottom: 20px; } }
+@keyframes fx-chat-in { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes fx-msg-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fx-dot { 0%,80%,100% { transform: translateY(0); opacity: .35; } 40% { transform: translateY(-4px); opacity: 1; } }
+@keyframes fx-teaser { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: none; } }
+.fx-msg { animation: fx-msg-in .3s ease both; }
+.fx-dot { width: 7px; height: 7px; border-radius: 50%; background: #9A9285; display: inline-block; animation: fx-dot 1.1s ease-in-out infinite; }
+.fx-teaser { animation: fx-teaser .4s ease both; }
+.fx-chat-input { width: 100%; border: 1px solid #E7E2DA; border-radius: 999px; padding: 12px 16px; font-size: 16px; color: #15130F; background: #fff; }
+.fx-chat-input:focus { outline: none; border-color: #F97316; box-shadow: 0 0 0 4px rgba(249,115,22,.15); }
+@media (prefers-reduced-motion: reduce) { .fx-chat-panel, .fx-msg, .fx-teaser, .fx-dot { animation: none !important; } }

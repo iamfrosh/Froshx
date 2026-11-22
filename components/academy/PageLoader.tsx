@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import ChristmasLayer from "../christmas/ChristmasLayer";
+import ChatWidget from "../chat/ChatWidget";
 import ChristmasTree from "../christmas/ChristmasTree";
 import SantaHat from "../christmas/SantaHat";
 import { christmasActive } from "../christmas/christmasConfig";
@@ -46,6 +47,7 @@ export default function PageLoader() {
   return (
     <>
       <ChristmasLayer />
+      <ChatWidget />
       {show && (
         <div aria-hidden className={xmas ? `xm-loader ${fade ? "opacity-0" : "opacity-100"}` : `fixed inset-0 z-[300] flex flex-col items-center justify-center bg-white transition-opacity duration-500 ${fade ? "opacity-0" : "opacity-100"}`}>
           {xmas ? (
