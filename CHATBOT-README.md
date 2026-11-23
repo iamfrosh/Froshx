@@ -1,34 +1,30 @@
 # FroshX Assistant (website chatbot)
 
-## What it is
-A chat bubble on every public page ("Ask FroshX"). Visitors can ask about courses, fees, registration, start dates, certificates, payment and your services.
-- **Free mode (always on):** answers instantly from your own information in `lib/chatKnowledge.ts` (course list, prices from `lib/academy.ts`, contact details from `lib/site.ts`). Costs nothing and cannot invent prices.
-- **Optional AI mode:** only used when a question isn't covered. It is told to answer ONLY from your facts and to send people to WhatsApp when unsure. It has per-visitor and daily limits.
-- If nothing can answer, it hands the visitor to WhatsApp.
+## How it works now
+1. A chat bubble ("Ask FroshX") on every public page.
+2. **With AI turned on (recommended):** the assistant answers almost any question: about FroshX (courses, fees, registration, services) and general tech, learning and business questions.
+3. If it can't answer (a custom price, a complaint, something only a person can decide), it asks the visitor for their **email** (name and WhatsApp optional) and says the team will get back soon.
+4. That question lands in your **Chat inbox** at `/admin/chat` (a "Chat inbox" button also appears on your admin pages with the number waiting, and you get an email alert if Gmail is set up). You write a reply and it is sent to the visitor by email in the FroshX design.
+5. **Without AI:** only the built-in answers work (courses, fees, registration, payment, start dates, certificate, services, contact). Everything else goes to the email-capture step.
 
-## Is it free?
-- The free mode is 100% free (no API, no key).
-- AI mode needs an API key from a provider:
-  - Google Gemini has a free tier with usage limits (limits and rules change; check Google AI Studio). Free-tier prompts may be used by Google to improve its products.
-  - Anthropic (Claude) is paid per use.
-  Limits protect you: by default 15 AI answers per visitor per day and 300 per day in total (`CHAT_SESSION_LIMIT`, `CHAT_DAILY_LIMIT`).
-- Chat history is stored in your MongoDB (deleted automatically after 90 days).
+## Turn on AI (so it can answer most questions)
+In Vercel > Settings > Environment Variables add these, then redeploy:
+- `AI_PROVIDER` = `gemini`
+- `AI_API_KEY` = your key (free: go to aistudio.google.com, sign in, "Get API key")
+- `AI_MODEL` = optional (default `gemini-2.5-flash`; if Google renames it, use the current name from AI Studio)
+- `CHAT_SESSION_LIMIT` (default 15 AI answers per visitor per day) and `CHAT_DAILY_LIMIT` (default 300 per day in total) = optional spend/abuse protection
+Anthropic (Claude) also works: `AI_PROVIDER=anthropic`, `AI_API_KEY=...` (this one is paid per use).
+Gemini's free tier has usage limits that Google can change, and free-tier prompts may be used by Google to improve its products. Check the current terms.
 
-## Turn on AI mode (optional)
-In Vercel > Settings > Environment Variables add, then redeploy:
-- `AI_PROVIDER` = `gemini` (or `anthropic`)
-- `AI_API_KEY` = your key (Gemini: Google AI Studio > Get API key)
-- `AI_MODEL` = optional. Defaults: `gemini-2.5-flash` / `claude-haiku-5-5`. If Google renames the model, set the current name here.
-- `CHAT_SESSION_LIMIT`, `CHAT_DAILY_LIMIT` = optional limits.
-Without these, only free mode runs.
+## Give it your real website prices (important)
+Open `lib/chatKnowledge.ts` and fill `AGENCY_NOTES`:
+- `price`: e.g. "Websites usually start from ₦150,000 depending on the pages and features."
+- `timeline`: e.g. "A typical website takes 2 to 4 weeks."
+If you leave them empty, the assistant says the price depends on the project and offers a quote by email. It never invents prices.
 
-## See what people ask
-Sign in at `/admin`, then open `/admin/chat`. Questions marked "Not answered" show what to add next.
-
-## Change or add answers
-Edit `lib/chatKnowledge.ts` (the `answer()` function and the facts at the bottom).
-Prices and courses update automatically when you change `lib/academy.ts`.
+## Email replies
+Replies use the same Gmail setup as the registration emails (`GMAIL_USER`, `GMAIL_APP_PASSWORD`).
 
 ## Files
-New: `lib/chatKnowledge.ts`, `models/ChatLog.ts`, `app/api/chat/route.ts`, `app/api/admin/chat/route.ts`, `app/admin/chat/page.tsx`, `components/chat/*`.
-Replaced: `components/academy/PageLoader.tsx` (it now also mounts the chat bubble).
+New: `lib/chatKnowledge.ts`, `models/ChatLog.ts`, `models/ChatEnquiry.ts`, `app/api/chat/route.ts`, `app/api/chat/enquiry/route.ts`, `app/api/admin/chat/route.ts`, `app/api/admin/chat/reply/route.ts`, `app/admin/chat/page.tsx`, `components/chat/*`.
+Replaced: `components/academy/PageLoader.tsx` (mounts the chat bubble).

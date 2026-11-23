@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { answer, FALLBACK, WELCOME, Action, Reply } from "@/lib/chatKnowledge";
+import { answer, quickAnswer, FALLBACK, WELCOME, Action, Reply } from "@/lib/chatKnowledge";
 import { WhatsAppIcon, CloseIcon } from "../Icons";
 import "./chat.css";
 
-type Msg = { id: number; from: "user" | "bot"; text: string; actions?: Action[]; chips?: string[] };
+type Msg = { id: number; from: "user" | "bot"; text: string; actions?: Action[]; chips?: string[]; form?: { question: string; done?: boolean } };
 const STORE = "froshx-chat";
+const ASK_TEAM_ACTION: Action = { label: "Chat with the team on WhatsApp", href: "https://wa.me/2347041013001", external: true };
 const SID = "froshx-sid";
 
 function sessionId() {
@@ -25,10 +26,66 @@ const ChatIcon = (p: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+function EnquiryForm({ question, history, sid, onDone }: { question: string; history: { role: string; content: string }[]; sid: string; onDone: (email: string, name: string) => void }) {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [q, setQ] = useState(question);
+  const [hp, setHp] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr("");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) { setErr("Please enter a valid email address."); return; }
+    setBusy(true);
+    try {
+      const res = await fetch("/api/chat/enquiry", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sid, email, name, phone, question: q, history, website: hp }) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { setErr(j.error || "Something went wrong. Please try again."); setBusy(false); return; }
+      onDone(email.trim(), name.trim());
+    } catch { setErr("Couldn't send. Check your connection and try again."); setBusy(false); }
+  };
+
+  return (
+    <form onSubmit={submit} className="mt-2 space-y-2.5 rounded-2xl border border-flare-100 bg-flare-50 p-3.5">
+      <input type="text" tabIndex={-1} autoComplete="off" value={hp} onChange={(e) => setHp(e.target.value)} className="absolute -left-[9999px] h-0 w-0 opacity-0" aria-hidden="true" />
+      <input type="email" inputMode="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your email address" aria-label="Your email address" className="fx-chat-input !rounded-xl" />
+      <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Your name (optional)" aria-label="Your name" className="fx-chat-input !rounded-xl" />
+      <input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={30} placeholder="WhatsApp number (optional)" aria-label="WhatsApp number" className="fx-chat-input !rounded-xl" />
+      <textarea value={q} onChange={(e) => setQ(e.target.value)} maxLength={800} rows={3} aria-label="Your question" className="fx-chat-input !resize-none !rounded-xl" />
+      {err && <p role="alert" className="text-xs font-medium text-red-600">{err}</p>}
+      <button disabled={busy} className="w-full rounded-full bg-ink py-3 text-[13px] font-semibold text-white transition hover:bg-flare-600 disabled:opacity-60">{busy ? "Sending…" : "Send to the FroshX team"}</button>
+    </form>
+  );
+}
+
+// Shortcut shown to the admin on admin pages: opens the chat inbox and shows how many enquiries are waiting.
+function InboxShortcut() {
+  const pathname = usePathname();
+  const [open, setOpen] = useState<number | null>(null);
+  useEffect(() => {
+    let live = true;
+    const load = () => fetch("/api/admin/chat?summary=1", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((j) => live && setOpen(j ? j.open : null)).catch(() => {});
+    load();
+    const t = setInterval(load, 30000);
+    return () => { live = false; clearInterval(t); };
+  }, [pathname]);
+  if (open === null || pathname.startsWith("/admin/chat")) return null;
+  return (
+    <Link href="/admin/chat" className="fixed bottom-5 right-4 z-[80] flex items-center gap-2 rounded-full bg-ink px-5 py-3.5 text-sm font-semibold text-white shadow-[0_12px_30px_-8px_rgba(21,19,15,.6)] hover:bg-flare-600">
+      <ChatIcon className="h-5 w-5" /> Chat inbox
+      {open > 0 && <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-flare-500 px-1.5 text-xs font-bold">{open}</span>}
+    </Link>
+  );
+}
+
 // Floating website assistant. Answers from FroshX's own information for free; hands over to WhatsApp when unsure.
 export default function ChatWidget() {
   const pathname = usePathname();
   const hidden = pathname.startsWith("/admin");
+  const [ai, setAi] = useState(false);
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState("");
@@ -39,6 +96,9 @@ export default function ChatWidget() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const fromReply = useCallback((r: Reply): Msg => ({ id: idRef.current++, from: "bot", text: r.text, actions: r.actions, chips: r.chips }), []);
+
+  // is AI answering on this site?
+  useEffect(() => { fetch("/api/chat", { cache: "no-store" }).then((r) => r.json()).then((j) => setAi(Boolean(j?.ai))).catch(() => {}); }, []);
 
   // restore the conversation for this browser session
   useEffect(() => {
@@ -81,7 +141,8 @@ export default function ChatWidget() {
     const sid = sessionId();
     const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-    const local = answer(q);
+    // AI on: only fixed, safe answers are instant; everything else goes to the AI. AI off: full built-in answers.
+    const local = ai ? quickAnswer(q) : answer(q);
     if (local) {
       await wait(450 + Math.min(700, local.text.length * 3));
       setMsgs((m) => [...m, fromReply(local)]);
@@ -90,20 +151,32 @@ export default function ChatWidget() {
       return;
     }
 
-    // not covered by the built-in knowledge: the server may use AI, or hands over to the team
-    let reply: Reply = FALLBACK;
+    let msg: Msg = { id: 0, from: "bot", text: FALLBACK.text, form: { question: q } };
     try {
       const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sid, message: q, history }) });
       const j = await res.json().catch(() => ({}));
-      if (j?.reply) reply = { intent: "ai", text: j.reply, actions: FALLBACK.actions?.slice(0, 1), chips: ["Courses & fees", "How to register"] };
-      else if (j?.limited) reply = { ...FALLBACK, text: "You've asked a lot of questions today, so I'll hand you over to the team. They can answer on WhatsApp." };
+      if (j?.reply && !j.handoff) msg = { id: 0, from: "bot", text: j.reply, chips: ["Courses & fees", "How to register"], actions: [ASK_TEAM_ACTION] };
+      else if (j?.reply && j.handoff) msg = { id: 0, from: "bot", text: `${j.reply}\n\nLeave your email below and we'll get back to you soon.`, form: { question: q } };
+      else if (j?.limited) msg = { id: 0, from: "bot", text: "You've asked a lot of questions today. Leave your email and the team will reply to you directly.", form: { question: q } };
     } catch {}
     await wait(300);
-    setMsgs((m) => [...m, fromReply(reply)]);
+    setMsgs((m) => [...m, { ...msg, id: idRef.current++ }]);
     setTyping(false);
-  }, [msgs, typing, fromReply]);
+  }, [msgs, typing, fromReply, ai]);
 
-  if (hidden) return null;
+  const openEnquiry = (question: string) => {
+    setMsgs((m) => [...m, { id: idRef.current++, from: "bot", text: "Share your email and what you need, and the team will get back to you soon.", form: { question } }]);
+  };
+  const lastUserText = [...msgs].reverse().find((m) => m.from === "user")?.text || "";
+  const history = msgs.slice(-8).map((m) => ({ role: m.from === "user" ? "user" : "assistant", content: m.text }));
+  const enquiryDone = (id: number, email: string, name: string) => {
+    setMsgs((m) => [
+      ...m.map((x) => (x.id === id && x.form ? { ...x, form: { ...x.form, done: true } } : x)),
+      { id: idRef.current++, from: "bot", text: `Thank you${name ? ", " + name.split(" ")[0] : ""}! 🙌 We've received your question. The FroshX team will reply to ${email} soon.`, chips: ["Courses & fees", "How to register"] },
+    ]);
+  };
+
+  if (hidden) return <InboxShortcut />;
 
   return (
     <>
@@ -145,13 +218,18 @@ export default function ChatWidget() {
                   {m.from === "bot" && m.actions && m.actions.length > 0 && (
                     <div className="mt-2 flex flex-col gap-2">
                       {m.actions.map((a) =>
-                        a.external ? (
+                        a.kind === "enquiry" ? (
+                          <button key={a.label} onClick={() => openEnquiry(lastUserText)} className="inline-flex items-center justify-center rounded-full bg-ink px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-flare-600">{a.label}</button>
+                        ) : a.external ? (
                           <a key={a.label} href={a.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 py-2.5 text-[13px] font-semibold text-white hover:brightness-95"><WhatsAppIcon className="h-4 w-4" /> {a.label}</a>
                         ) : (
                           <Link key={a.label} href={a.href} onClick={() => setOpen(false)} className="inline-flex items-center justify-center rounded-full bg-ink px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-flare-600">{a.label}</Link>
                         )
                       )}
                     </div>
+                  )}
+                  {m.from === "bot" && m.form && !m.form.done && (
+                    <EnquiryForm question={m.form.question} history={history} sid={sessionId()} onDone={(email, name) => enquiryDone(m.id, email, name)} />
                   )}
                   {m.from === "bot" && m.chips && i === msgs.length - 1 && !typing && (
                     <div className="mt-2 flex flex-wrap gap-2">

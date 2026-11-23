@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import ChatLog from "@/models/ChatLog";
-import { systemPrompt } from "@/lib/chatKnowledge";
+import { parseAiReply, systemPrompt } from "@/lib/chatKnowledge";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -67,6 +67,11 @@ async function askAI(turns: Turn[]): Promise<string> {
   throw new Error("Unknown AI_PROVIDER");
 }
 
+// lets the chat bubble know whether AI answers are switched on
+export async function GET() {
+  return NextResponse.json({ ai: aiReady() });
+}
+
 export async function POST(req: Request) {
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const message = clip(b.message, 500);
@@ -105,10 +110,11 @@ export async function POST(req: Request) {
       await log("", "none");
       return NextResponse.json({ reply: null, handoff: true, limited: true });
     }
-    const text = (await askAI(cleanHistory(b.history, message))).replace(/[*_#`]/g, "").trim().slice(0, 700);
-    if (!text) throw new Error("empty");
-    await log(text, "ai");
-    return NextResponse.json({ reply: text, ai: true });
+    const raw = (await askAI(cleanHistory(b.history, message))).replace(/[*#`]/g, "").trim().slice(0, 800);
+    if (!raw) throw new Error("empty");
+    const parsed = parseAiReply(raw);
+    await log(parsed.text, parsed.handoff ? "none" : "ai");
+    return NextResponse.json({ reply: parsed.text, ai: true, handoff: parsed.handoff });
   } catch (e) {
     console.error("chat ai error", e);
     await log("", "none");
