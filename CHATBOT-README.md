@@ -8,13 +8,13 @@
 5. **Without AI:** only the built-in answers work (courses, fees, registration, payment, start dates, certificate, services, contact). Everything else goes to the email-capture step.
 
 ## Turn on AI (so it can answer most questions)
-In Vercel > Settings > Environment Variables add these, then redeploy:
-- `AI_PROVIDER` = `gemini`
-- `AI_API_KEY` = your key (free: go to aistudio.google.com, sign in, "Get API key")
-- `AI_MODEL` = optional (default `gemini-2.5-flash`; if Google renames it, use the current name from AI Studio)
-- `CHAT_SESSION_LIMIT` (default 15 AI answers per visitor per day) and `CHAT_DAILY_LIMIT` (default 300 per day in total) = optional spend/abuse protection
-Anthropic (Claude) also works: `AI_PROVIDER=anthropic`, `AI_API_KEY=...` (this one is paid per use).
-Gemini's free tier has usage limits that Google can change, and free-tier prompts may be used by Google to improve its products. Check the current terms.
+1. Get a key: aistudio.google.com, sign in, "Get API key" (free tier).
+2. In Vercel > Settings > Environment Variables add `AI_API_KEY` = your key (and `AI_PROVIDER` = `gemini`). The names `GEMINI_API_KEY` or `GOOGLE_API_KEY` also work.
+3. **Redeploy.** A new variable only works after a redeploy.
+4. Open `/admin/chat` and press **Test AI connection**. It shows "Working" with the model name, or the exact error (wrong key, quota, model name, etc.).
+Optional: `AI_MODEL` (the assistant tries several Gemini models automatically), `CHAT_SESSION_LIMIT` (default 40 AI answers per visitor per day), `CHAT_DAILY_LIMIT` (default 600 per day in total).
+Anthropic (Claude) also works: `AI_PROVIDER=anthropic`, `AI_API_KEY=...` (paid per use).
+Gemini's free tier has limits that Google can change, and free-tier prompts may be used by Google to improve its products.
 
 ## Give it your real website prices (important)
 Open `lib/chatKnowledge.ts` and fill `AGENCY_NOTES`:
@@ -27,4 +27,5 @@ Replies use the same Gmail setup as the registration emails (`GMAIL_USER`, `GMAI
 
 ## Files
 New: `lib/chatKnowledge.ts`, `models/ChatLog.ts`, `models/ChatEnquiry.ts`, `app/api/chat/route.ts`, `app/api/chat/enquiry/route.ts`, `app/api/admin/chat/route.ts`, `app/api/admin/chat/reply/route.ts`, `app/admin/chat/page.tsx`, `components/chat/*`.
+New in this version: `lib/aiConfig.ts`, `lib/aiClient.ts`, `app/api/admin/chat/test/route.ts`.
 Replaced: `components/academy/PageLoader.tsx` (mounts the chat bubble).

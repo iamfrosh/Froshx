@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/mongodb";
 import { isAdmin } from "@/lib/adminAuth";
 import ChatLog from "@/models/ChatLog";
 import ChatEnquiry from "@/models/ChatEnquiry";
+import { aiConfig } from "@/lib/aiConfig";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export async function GET(req: Request) {
   }
 
   const since = new Date(); since.setUTCHours(0, 0, 0, 0);
-  const [enquiries, logs, total, today, ai, unanswered, open] = await Promise.all([
+  const [enquiries, logs, total, today, ai, unanswered, open, lastErr] = await Promise.all([
     ChatEnquiry.find().sort({ status: -1, createdAt: -1 }).limit(200).lean(), // "open" sorts after "answered", so re-sort below
     ChatLog.find().sort({ createdAt: -1 }).limit(250).lean(),
     ChatLog.countDocuments(),
@@ -24,6 +25,7 @@ export async function GET(req: Request) {
     ChatLog.countDocuments({ source: "ai", createdAt: { $gte: since } }),
     ChatLog.countDocuments({ source: "none" }),
     ChatEnquiry.countDocuments({ status: "open" }),
+    ChatLog.findOne({ intent: "ai-error" }).sort({ createdAt: -1 }).lean(),
   ]);
   const list = enquiries
     .map((e) => ({
@@ -34,8 +36,9 @@ export async function GET(req: Request) {
     }))
     .sort((a, b) => (a.status === b.status ? new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime() : a.status === "open" ? -1 : 1));
   return NextResponse.json({
-    aiReady: Boolean(process.env.AI_PROVIDER && process.env.AI_API_KEY),
-    provider: process.env.AI_PROVIDER || "",
+    aiReady: aiConfig().ready,
+    provider: aiConfig().provider,
+    lastAiError: lastErr ? { text: lastErr.answer || "", at: lastErr.createdAt } : null,
     stats: { total, today, aiToday: ai, unanswered, open },
     enquiries: list,
     logs: logs.map((l) => ({ id: String(l._id), question: l.question, answer: l.answer, source: l.source, intent: l.intent, at: l.createdAt })),

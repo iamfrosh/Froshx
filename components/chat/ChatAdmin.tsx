@@ -7,7 +7,7 @@ import "../academy/academy.css";
 
 type Enq = { id: string; email: string; name: string; phone: string; question: string; status: "open" | "answered"; transcript: { from: string; text: string }[]; replies: { subject: string; text: string; at: string }[]; at: string };
 type Log = { id: string; question: string; answer: string; source: "rules" | "ai" | "none"; intent: string; at: string };
-type Data = { aiReady: boolean; provider: string; stats: { total: number; today: number; aiToday: number; unanswered: number; open: number }; enquiries: Enq[]; logs: Log[] };
+type Data = { aiReady: boolean; provider: string; lastAiError: { text: string; at: string } | null; stats: { total: number; today: number; aiToday: number; unanswered: number; open: number }; enquiries: Enq[]; logs: Log[] };
 
 const BADGE: Record<string, string> = { rules: "bg-green-50 text-green-700", ai: "bg-blue-50 text-blue-700", none: "bg-red-50 text-red-700" };
 const LABEL: Record<string, string> = { rules: "Answered (free)", ai: "Answered (AI)", none: "Not answered" };
@@ -83,6 +83,15 @@ export default function ChatAdmin() {
   const [denied, setDenied] = useState(false);
   const [tab, setTab] = useState<"inbox" | "all">("inbox");
   const [only, setOnly] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [test, setTest] = useState<{ ok: boolean; model?: string; reply?: string; error?: string } | null>(null);
+  const runTest = async () => {
+    setTesting(true); setTest(null);
+    const r = await fetch("/api/admin/chat/test", { method: "POST" });
+    setTest(await r.json().catch(() => ({ ok: false, error: "No response from the server." })));
+    setTesting(false);
+    load();
+  };
 
   const load = useCallback(() => {
     fetch("/api/admin/chat", { cache: "no-store" }).then(async (r) => {
@@ -117,6 +126,19 @@ export default function ChatAdmin() {
         AI answers: <b className={data.aiReady ? "text-green-700" : "text-red-600"}>{data.aiReady ? `ON (${data.provider})` : "OFF"}</b>.{" "}
         {data.aiReady ? "The assistant answers most questions and hands the rest to you." : "Only the built-in answers work. Turn AI on (see CHATBOT-README) so the assistant can answer almost any question."}
       </p>
+
+      <div className="mt-3 rounded-2xl border border-line bg-white p-4 text-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <button onClick={runTest} disabled={testing} className="rounded-full bg-ink px-5 py-2.5 font-semibold text-white hover:bg-flare-600 disabled:opacity-60">{testing ? "Testing…" : "Test AI connection"}</button>
+          <span className="text-muted">Asks the AI a real question and shows exactly what happens.</span>
+        </div>
+        {test && (test.ok ? (
+          <div className="mt-3 rounded-xl border border-green-200 bg-green-50 p-3"><p className="font-semibold text-green-700">Working ✓ (model: {test.model})</p><p className="mt-1 whitespace-pre-line text-ink/80">{test.reply}</p></div>
+        ) : (
+          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-red-700"><p className="font-semibold">Not working</p><p className="mt-1 break-words">{test.error}</p></div>
+        ))}
+        {!test && data.lastAiError && <p className="mt-3 break-words rounded-xl border border-red-200 bg-red-50 p-3 text-red-700">Last AI error: {data.lastAiError.text}</p>}
+      </div>
 
       <div className="mt-8 flex gap-2 border-b border-line">
         {([["inbox", `Enquiries (${data.enquiries.length})`], ["all", "All chats"]] as const).map(([k, l]) => (

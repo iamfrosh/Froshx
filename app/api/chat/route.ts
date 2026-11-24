@@ -2,24 +2,22 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import ChatLog from "@/models/ChatLog";
 import { parseAiReply, systemPrompt } from "@/lib/chatKnowledge";
+import { aiConfig } from "@/lib/aiConfig";
+import { askAI, Turn } from "@/lib/aiClient";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+export const maxDuration = 45;
 
-type Turn = { role: "user" | "assistant"; content: string };
 const clip = (s: unknown, n: number) => (typeof s === "string" ? s.trim().slice(0, n) : "");
+const startOfDay = () => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); return d; };
 
-const aiReady = () => Boolean(process.env.AI_PROVIDER && process.env.AI_API_KEY);
-
-function startOfDay() { const d = new Date(); d.setUTCHours(0, 0, 0, 0); return d; }
-
-// alternate user / assistant turns, starting with the user
+// alternate user / assistant turns, starting and ending with the user
 function cleanHistory(history: unknown, message: string): Turn[] {
   const raw = Array.isArray(history) ? history : [];
   const turns: Turn[] = [];
-  for (const h of raw.slice(-8)) {
+  for (const h of raw.slice(-12)) {
     const role = h?.role === "assistant" ? "assistant" : "user";
-    const content = clip(h?.content, 500);
+    const content = clip(h?.content, 700);
     if (!content) continue;
     if (turns.length && turns[turns.length - 1].role === role) turns[turns.length - 1].content += `\n${content}`;
     else turns.push({ role, content });
@@ -30,51 +28,14 @@ function cleanHistory(history: unknown, message: string): Turn[] {
   return turns;
 }
 
-async function askAI(turns: Turn[]): Promise<string> {
-  const provider = process.env.AI_PROVIDER;
-  const key = process.env.AI_API_KEY as string;
-  const system = systemPrompt();
-  const signal = AbortSignal.timeout(20000);
-
-  if (provider === "anthropic") {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: process.env.AI_MODEL || "claude-haiku-5-5", max_tokens: 300, system, messages: turns }),
-      signal,
-    });
-    if (!res.ok) throw new Error(`AI error ${res.status}`);
-    const j = await res.json();
-    return String(j?.content?.[0]?.text || "");
-  }
-
-  if (provider === "gemini") {
-    const model = process.env.AI_MODEL || "gemini-2.5-flash";
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: system }] },
-        contents: turns.map((t) => ({ role: t.role === "assistant" ? "model" : "user", parts: [{ text: t.content }] })),
-        generationConfig: { maxOutputTokens: 300, temperature: 0.3 },
-      }),
-      signal,
-    });
-    if (!res.ok) throw new Error(`AI error ${res.status}`);
-    const j = await res.json();
-    return String(j?.candidates?.[0]?.content?.parts?.[0]?.text || "");
-  }
-  throw new Error("Unknown AI_PROVIDER");
-}
-
 // lets the chat bubble know whether AI answers are switched on
 export async function GET() {
-  return NextResponse.json({ ai: aiReady() });
+  return NextResponse.json({ ai: aiConfig().ready });
 }
 
 export async function POST(req: Request) {
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const message = clip(b.message, 500);
+  const message = clip(b.message, 600);
   const sid = clip(b.sid, 64);
   if (!message || !sid) return NextResponse.json({ ok: false }, { status: 400 });
 
@@ -87,37 +48,39 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // unknown question: AI helps if it is set up, otherwise hand over to the team
   let db = false;
   try { await connectDB(); db = true; } catch {}
-
-  const log = async (answer: string, source: "ai" | "none") => {
+  const log = async (answer: string, source: "ai" | "none", intent = "unknown") => {
     if (!db) return;
-    try { await ChatLog.create({ sid, question: message, answer, source, intent: "unknown" }); } catch {}
+    try { await ChatLog.create({ sid, question: message, answer, source, intent }); } catch {}
   };
 
-  if (!aiReady() || !db) {
+  if (!aiConfig().ready) {
     await log("", "none");
     return NextResponse.json({ reply: null, handoff: true });
   }
 
   try {
-    const [mine, today] = await Promise.all([
-      ChatLog.countDocuments({ sid, source: "ai", createdAt: { $gte: startOfDay() } }),
-      ChatLog.countDocuments({ source: "ai", createdAt: { $gte: startOfDay() } }),
-    ]);
-    if (mine >= Number(process.env.CHAT_SESSION_LIMIT || 15) || today >= Number(process.env.CHAT_DAILY_LIMIT || 300)) {
-      await log("", "none");
-      return NextResponse.json({ reply: null, handoff: true, limited: true });
+    // protect against abuse and surprise bills (only when the database is reachable)
+    if (db) {
+      const [mine, today] = await Promise.all([
+        ChatLog.countDocuments({ sid, source: "ai", createdAt: { $gte: startOfDay() } }),
+        ChatLog.countDocuments({ source: "ai", createdAt: { $gte: startOfDay() } }),
+      ]);
+      if (mine >= Number(process.env.CHAT_SESSION_LIMIT || 40) || today >= Number(process.env.CHAT_DAILY_LIMIT || 600)) {
+        await log("", "none", "limit");
+        return NextResponse.json({ reply: null, handoff: true, limited: true });
+      }
     }
-    const raw = (await askAI(cleanHistory(b.history, message))).replace(/[*#`]/g, "").trim().slice(0, 800);
-    if (!raw) throw new Error("empty");
-    const parsed = parseAiReply(raw);
-    await log(parsed.text, parsed.handoff ? "none" : "ai");
-    return NextResponse.json({ reply: parsed.text, ai: true, handoff: parsed.handoff });
+    const { text: raw, model } = await askAI(systemPrompt(), cleanHistory(b.history, message), 900);
+    const parsed = parseAiReply(raw.replace(/[*#`]/g, ""));
+    const text = parsed.text.slice(0, 1200);
+    await log(text, parsed.handoff ? "none" : "ai", parsed.handoff ? "handoff" : model);
+    return NextResponse.json({ reply: text, ai: true, handoff: parsed.handoff, chips: parsed.chips });
   } catch (e) {
-    console.error("chat ai error", e);
-    await log("", "none");
-    return NextResponse.json({ reply: null, handoff: true });
+    const msg = e instanceof Error ? e.message : "AI failed";
+    console.error("chat ai error:", msg);
+    await log(`AI error: ${msg}`.slice(0, 300), "none", "ai-error");
+    return NextResponse.json({ reply: null, handoff: true, error: true });
   }
 }

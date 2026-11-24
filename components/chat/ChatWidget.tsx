@@ -155,8 +155,9 @@ export default function ChatWidget() {
     try {
       const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sid, message: q, history }) });
       const j = await res.json().catch(() => ({}));
-      if (j?.reply && !j.handoff) msg = { id: 0, from: "bot", text: j.reply, chips: ["Courses & fees", "How to register"], actions: [ASK_TEAM_ACTION] };
+      if (j?.reply && !j.handoff) msg = { id: 0, from: "bot", text: j.reply, chips: Array.isArray(j.chips) && j.chips.length ? j.chips : ["Courses & fees", "How to register"] };
       else if (j?.reply && j.handoff) msg = { id: 0, from: "bot", text: `${j.reply}\n\nLeave your email below and we'll get back to you soon.`, form: { question: q } };
+      else if (j?.error) msg = { id: 0, from: "bot", text: "I'm having a little trouble answering right now. Leave your email and the FroshX team will reply to you soon.", form: { question: q } };
       else if (j?.limited) msg = { id: 0, from: "bot", text: "You've asked a lot of questions today. Leave your email and the team will reply to you directly.", form: { question: q } };
     } catch {}
     await wait(300);
