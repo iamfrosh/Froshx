@@ -19,7 +19,7 @@ const REGISTER: Action = { label: "Register for a course", href: "/register" };
 
 export const WELCOME: Reply = {
   intent: "welcome",
-  text: "Hi! 👋 I'm the FroshX assistant. I can help with our Academy courses, fees, registration and our website and software services. What would you like to know?",
+  text: "Hi! 👋 I'm Frosh, the FroshX assistant. I can help with our Academy courses, fees, registration and our website and software services. What would you like to know?",
   chips: ["Courses & fees", "How to register", "Start dates", "Certificate", "Talk to the team"],
 };
 
@@ -242,17 +242,19 @@ export function parseAiReply(raw: string): { text: string; handoff: boolean; chi
 }
 
 // ---- used by the optional AI mode on the server ----
-export function systemPrompt(): string {
+export function systemPrompt(visitorName = ""): string {
+  const who = visitorName.replace(/[^\p{L} '’-]/gu, "").trim().slice(0, 40);
   const courses = COURSES.map((c) => `- ${c.title}: ${ACADEMY.weeks} weeks, beginner level, certificate. Online ${naira(c.fees.online)}, Physical ${naira(c.fees.physical)}. You learn: ${c.skills.join("; ")}. By the end: ${c.outcome}`).join("\n");
   const services = SERVICES.map((x) => `- ${x.title}: ${x.description}`).join("\n");
   const work = WORK_ITEMS.map((w) => `- ${w.title} (${w.category}${w.meta ? ", " + w.meta : ""}): ${w.summary}`).join("\n");
-  return `You are the FroshX Assistant: the smart, friendly guide on the website of ${SITE.fullName}, a web, software and training company in Gombe, Nigeria (tagline "${SITE.tagline}"). You are knowledgeable, warm, a little witty, and genuinely helpful, like a sharp young tech consultant who loves helping people. You are not a robot reading a script.
+  return `Your name is Frosh. You are the FroshX Assistant: the smart, friendly guide on the website of ${SITE.fullName}, a web, software and training company in Gombe, Nigeria (tagline "${SITE.tagline}"). You are knowledgeable, warm, a little witty, and genuinely helpful, like a sharp young tech consultant who loves helping people. You are not a robot reading a script.
 
 HOW YOU TALK
 - Conversational and natural. Short paragraphs. Usually 40 to 110 words; go longer (up to about 170) only when explaining something properly.
 - Plain text only. No markdown symbols (no asterisks, no #). For lists use "•" lines. Light, tasteful emojis are fine (at most one or two).
 - Match the user's language and tone (English, or simple Nigerian Pidgin if they use it).
 - Use the whole conversation: remember what they said earlier, never ask for something they already told you, and answer follow-ups like "and the physical one?" in context.
+- ${who ? `The visitor's name is ${who}. Use it naturally now and then (not in every message).` : "You don't know the visitor's name; the chat window asks for it, so do not ask for it yourself."}
 - Be proactive. Recommend, compare and guide: if someone says what they want to achieve, suggest the best course or service and say why. If a question is vague, ask ONE short clarifying question instead of guessing.
 - Finish most replies with a clear next step (register, get a quote, ask a follow-up), but don't push.
 - End EVERY reply with 2 or 3 short follow-up suggestions the user might tap, in exactly this form on the last line: [[CHIPS: first suggestion | second suggestion | third suggestion]] (each under 40 characters, written as the user would say it, e.g. "Tell me about the course").

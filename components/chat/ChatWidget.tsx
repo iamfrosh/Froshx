@@ -9,8 +9,11 @@ import "./chat.css";
 
 type Msg = { id: number; from: "user" | "bot"; text: string; actions?: Action[]; chips?: string[]; form?: { question: string; done?: boolean } };
 const STORE = "froshx-chat";
-const ASK_TEAM_ACTION: Action = { label: "Chat with the team on WhatsApp", href: "https://wa.me/2347041013001", external: true };
+const AWAIT = "froshx-chat-await";
+const NAME_KEY = "froshx-chat-name";
 const SID = "froshx-sid";
+const POPUP = "froshx-chat-popup";
+const MENU = ["Courses & fees", "How to register", "Get a website quote"];
 
 function sessionId() {
   try {
@@ -20,15 +23,32 @@ function sessionId() {
   } catch { return "anon"; }
 }
 
+const NOT_NAMES = new Set(["hi", "hello", "hey", "yes", "no", "ok", "okay", "help", "skip", "thanks", "thank you", "courses", "fees", "price", "prices", "register", "contact", "start", "what", "who", "why", "how", "when", "where", "please", "test", "interested", "looking", "new", "here", "just", "fine", "good", "ready", "student", "from", "learning", "trying", "wondering", "curious", "planning", "back", "sure", "nothing", "none"]);
+
+// pulls a first name out of replies like "Amina", "my name is Amina", "I'm Amina". Returns null when it looks like a question.
+function extractName(raw: string): string | null {
+  const t = raw.trim().replace(/[.!]+$/, "").replace(/^(hi|hello|hey|good (morning|afternoon|evening))[,!\s]+/i, "");
+  const m = t.match(/^(?:my name is|my name's|name is|i am|i'm|im|this is|call me|it's|its|they call me)\s+([A-Za-zÀ-ÿ'’ -]{2,40})$/i);
+  const cand = (m ? m[1] : t).trim();
+  if (!/^[A-Za-zÀ-ÿ'’-]+( [A-Za-zÀ-ÿ'’-]+){0,2}$/.test(cand) || cand.length < 2 || cand.length > 30) return null;
+  if (NOT_NAMES.has(cand.toLowerCase())) return null;
+  if (!m && answer(cand)) return null; // a FroshX question, not a name
+  return cand.split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
+
 const ChatIcon = (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...p}>
     <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" /><path d="M8.5 11h7M8.5 14h4" />
   </svg>
 );
 
-function EnquiryForm({ question, history, sid, onDone }: { question: string; history: { role: string; content: string }[]; sid: string; onDone: (email: string, name: string) => void }) {
+function Avatar({ className = "h-10 w-10" }: { className?: string }) {
+  return <span className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-flare-500 to-flare-300 font-display font-bold text-white ${className}`} aria-hidden="true">F</span>;
+}
+
+function EnquiryForm({ question, history, sid, initialName, onDone }: { question: string; history: { role: string; content: string }[]; sid: string; initialName: string; onDone: (email: string, name: string) => void }) {
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName);
   const [phone, setPhone] = useState("");
   const [q, setQ] = useState(question);
   const [hp, setHp] = useState("");
@@ -52,7 +72,7 @@ function EnquiryForm({ question, history, sid, onDone }: { question: string; his
     <form onSubmit={submit} className="mt-2 space-y-2.5 rounded-2xl border border-flare-100 bg-flare-50 p-3.5">
       <input type="text" tabIndex={-1} autoComplete="off" value={hp} onChange={(e) => setHp(e.target.value)} className="absolute -left-[9999px] h-0 w-0 opacity-0" aria-hidden="true" />
       <input type="email" inputMode="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your email address" aria-label="Your email address" className="fx-chat-input !rounded-xl" />
-      <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Your name (optional)" aria-label="Your name" className="fx-chat-input !rounded-xl" />
+      <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Your name" aria-label="Your name" className="fx-chat-input !rounded-xl" />
       <input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={30} placeholder="WhatsApp number (optional)" aria-label="WhatsApp number" className="fx-chat-input !rounded-xl" />
       <textarea value={q} onChange={(e) => setQ(e.target.value)} maxLength={800} rows={3} aria-label="Your question" className="fx-chat-input !resize-none !rounded-xl" />
       {err && <p role="alert" className="text-xs font-medium text-red-600">{err}</p>}
@@ -81,50 +101,69 @@ function InboxShortcut() {
   );
 }
 
-// Floating website assistant. Answers from FroshX's own information for free; hands over to WhatsApp when unsure.
+// Frosh: the floating website assistant. Greets, asks the visitor's name, answers questions and hands over to the team when unsure.
 export default function ChatWidget() {
   const pathname = usePathname();
   const hidden = pathname.startsWith("/admin");
+  const quiet = hidden || pathname.startsWith("/dashboard");
   const [ai, setAi] = useState(false);
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false);
-  const [teaser, setTeaser] = useState(false);
+  const [popup, setPopup] = useState(false);
+  const [name, setName] = useState("");
+  const [awaitingName, setAwaitingName] = useState(false);
   const idRef = useRef(1);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const bot = useCallback((t: string, chips?: string[]): Msg => ({ id: idRef.current++, from: "bot", text: t, chips }), []);
   const fromReply = useCallback((r: Reply): Msg => ({ id: idRef.current++, from: "bot", text: r.text, actions: r.actions, chips: r.chips }), []);
 
   // is AI answering on this site?
   useEffect(() => { fetch("/api/chat", { cache: "no-store" }).then((r) => r.json()).then((j) => setAi(Boolean(j?.ai))).catch(() => {}); }, []);
 
-  // restore the conversation for this browser session
+  // restore the conversation, or start: welcome back by name, or introduce Frosh and ask for the name
   useEffect(() => {
+    let n = "";
+    try { n = localStorage.getItem(NAME_KEY) || ""; } catch {}
+    setName(n);
     try {
       const saved = sessionStorage.getItem(STORE);
-      if (saved) { const m = JSON.parse(saved) as Msg[]; setMsgs(m); idRef.current = m.length + 1; return; }
+      if (saved) { const m = JSON.parse(saved) as Msg[]; if (m.length) { setMsgs(m); idRef.current = m.length + 10; setAwaitingName(sessionStorage.getItem(AWAIT) === "1"); return; } }
     } catch {}
-    setMsgs([fromReply(WELCOME)]);
-  }, [fromReply]);
-  useEffect(() => { try { sessionStorage.setItem(STORE, JSON.stringify(msgs.slice(-40))); } catch {} }, [msgs]);
+    if (n) setMsgs([bot(`Welcome back, ${n.split(" ")[0]}! 👋 I'm Frosh. How can I help you today?`, MENU)]);
+    else { setMsgs([bot("Hi! 👋 I'm Frosh, the FroshX assistant. What's your name?", ["Skip"])]); setAwaitingName(true); }
+  }, [bot]);
+  useEffect(() => { try { sessionStorage.setItem(STORE, JSON.stringify(msgs.slice(-40))); sessionStorage.setItem(AWAIT, awaitingName ? "1" : "0"); } catch {} }, [msgs, awaitingName]);
 
-  // one gentle nudge per visit
+  // after about two screens of scrolling, offer help once per visit
   useEffect(() => {
-    if (hidden) return;
+    if (quiet) return;
     let seen = false;
-    try { seen = sessionStorage.getItem("froshx-chat-teaser") === "1"; } catch {}
+    try { seen = sessionStorage.getItem(POPUP) === "1"; } catch {}
     if (seen) return;
-    const t = setTimeout(() => { setTeaser(true); try { sessionStorage.setItem("froshx-chat-teaser", "1"); } catch {} }, 9000);
-    return () => clearTimeout(t);
-  }, [hidden]);
-  useEffect(() => { if (!teaser) return; const t = setTimeout(() => setTeaser(false), 9000); return () => clearTimeout(t); }, [teaser]);
+    const show = () => {
+      setPopup(true);
+      try { sessionStorage.setItem(POPUP, "1"); } catch {}
+      window.removeEventListener("scroll", onScroll);
+    };
+    const onScroll = () => {
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+      const goal = Math.min(window.innerHeight * 2, scrollable * 0.6);
+      if (scrollable > 200 && window.scrollY >= goal) show();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    const fallback = setTimeout(show, 45000); // short pages that barely scroll
+    return () => { window.removeEventListener("scroll", onScroll); clearTimeout(fallback); };
+  }, [quiet]);
+  useEffect(() => { if (!popup) return; const t = setTimeout(() => setPopup(false), 20000); return () => clearTimeout(t); }, [popup]);
 
   useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" }); }, [msgs, typing, open]);
   useEffect(() => {
     if (!open) return;
-    setTeaser(false);
+    setPopup(false);
     const t = setTimeout(() => inputRef.current?.focus(), 300);
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
     window.addEventListener("keydown", onKey);
@@ -134,13 +173,35 @@ export default function ChatWidget() {
   const send = useCallback(async (raw: string) => {
     const q = raw.trim().slice(0, 500);
     if (!q || typing) return;
-    const history = msgs.slice(-8).map((m) => ({ role: m.from === "user" ? "user" : "assistant", content: m.text }));
+    const history = msgs.slice(-10).map((m) => ({ role: m.from === "user" ? "user" : "assistant", content: m.text }));
     setMsgs((m) => [...m, { id: idRef.current++, from: "user", text: q }]);
     setText("");
-    setTyping(true);
     const sid = sessionId();
     const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+    // the very first reply is treated as their name
+    if (awaitingName) {
+      setAwaitingName(false);
+      setTyping(true);
+      if (/^skip\b/i.test(q)) {
+        await wait(450);
+        setMsgs((m) => [...m, bot("No problem! How can I help you today?", MENU)]);
+        setTyping(false);
+        return;
+      }
+      const nm = extractName(q);
+      if (nm) {
+        setName(nm);
+        try { localStorage.setItem(NAME_KEY, nm); } catch {}
+        await wait(600);
+        setMsgs((m) => [...m, bot(`Nice to meet you, ${nm.split(" ")[0]}! 😊 How can I help you today?`, MENU)]);
+        setTyping(false);
+        return;
+      }
+      // it was a question, not a name: carry on and answer it
+    }
+
+    setTyping(true);
     // AI on: only fixed, safe answers are instant; everything else goes to the AI. AI off: full built-in answers.
     const local = ai ? quickAnswer(q) : answer(q);
     if (local) {
@@ -153,7 +214,7 @@ export default function ChatWidget() {
 
     let msg: Msg = { id: 0, from: "bot", text: FALLBACK.text, form: { question: q } };
     try {
-      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sid, message: q, history }) });
+      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sid, message: q, history, name }) });
       const j = await res.json().catch(() => ({}));
       if (j?.reply && !j.handoff) msg = { id: 0, from: "bot", text: j.reply, chips: Array.isArray(j.chips) && j.chips.length ? j.chips : ["Courses & fees", "How to register"] };
       else if (j?.reply && j.handoff) msg = { id: 0, from: "bot", text: `${j.reply}\n\nLeave your email below and we'll get back to you soon.`, form: { question: q } };
@@ -163,17 +224,17 @@ export default function ChatWidget() {
     await wait(300);
     setMsgs((m) => [...m, { ...msg, id: idRef.current++ }]);
     setTyping(false);
-  }, [msgs, typing, fromReply, ai]);
+  }, [msgs, typing, fromReply, ai, awaitingName, name, bot]);
 
   const openEnquiry = (question: string) => {
     setMsgs((m) => [...m, { id: idRef.current++, from: "bot", text: "Share your email and what you need, and the team will get back to you soon.", form: { question } }]);
   };
   const lastUserText = [...msgs].reverse().find((m) => m.from === "user")?.text || "";
   const history = msgs.slice(-8).map((m) => ({ role: m.from === "user" ? "user" : "assistant", content: m.text }));
-  const enquiryDone = (id: number, email: string, name: string) => {
+  const enquiryDone = (id: number, email: string, nm: string) => {
     setMsgs((m) => [
       ...m.map((x) => (x.id === id && x.form ? { ...x, form: { ...x.form, done: true } } : x)),
-      { id: idRef.current++, from: "bot", text: `Thank you${name ? ", " + name.split(" ")[0] : ""}! 🙌 We've received your question. The FroshX team will reply to ${email} soon.`, chips: ["Courses & fees", "How to register"] },
+      { id: idRef.current++, from: "bot", text: `Thank you${nm ? ", " + nm.split(" ")[0] : ""}! 🙌 We've received your question. The FroshX team will reply to ${email} soon.`, chips: ["Courses & fees", "How to register"] },
     ]);
   };
 
@@ -183,29 +244,40 @@ export default function ChatWidget() {
     <>
       {!open && (
         <div className="fx-chat-launch flex flex-col items-end gap-2">
-          {teaser && (
-            <button onClick={() => setOpen(true)} className="fx-teaser max-w-[220px] rounded-2xl rounded-br-md border border-line bg-white px-4 py-3 text-left text-[13px] font-medium leading-snug shadow-soft">
-              Need help choosing a course? Ask me 👋
-            </button>
+          {popup && (
+            <div className="fx-teaser w-[min(300px,calc(100vw-32px))] rounded-3xl rounded-br-lg border border-line bg-white p-4 shadow-[0_20px_50px_-15px_rgba(21,19,15,.45)]" role="dialog" aria-label="Chat with Frosh">
+              <div className="flex items-start gap-3">
+                <Avatar />
+                <div className="min-w-0 flex-1">
+                  <p className="font-display text-sm font-semibold leading-tight">Frosh <span className="font-normal text-muted">· FroshX Assistant</span></p>
+                  <p className="mt-1.5 text-[14px] leading-relaxed text-ink/80">Hi there! 👋 I'm Frosh, the FroshX assistant. How may I help you?</p>
+                </div>
+                <button onClick={() => setPopup(false)} aria-label="Dismiss" className="-mr-1 -mt-1 p-1 text-muted hover:text-ink"><CloseIcon className="h-4 w-4" /></button>
+              </div>
+              <div className="mt-3 flex gap-2">
+                <button onClick={() => setOpen(true)} className="flex-1 rounded-full bg-ink px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-flare-600">Chat with Frosh</button>
+                <button onClick={() => setPopup(false)} className="rounded-full border border-line px-4 py-2.5 text-[13px] font-semibold text-muted hover:text-ink">Later</button>
+              </div>
+            </div>
           )}
           <button
             onClick={() => setOpen(true)}
-            aria-label="Open FroshX assistant"
+            aria-label="Chat with Frosh, the FroshX assistant"
             className="flex items-center gap-2 rounded-full bg-ink px-4 py-3.5 text-sm font-semibold text-white shadow-[0_12px_30px_-8px_rgba(21,19,15,.6)] transition hover:bg-flare-600"
           >
             <ChatIcon className="h-5 w-5" />
-            <span className="hidden sm:inline">Ask FroshX</span>
+            <span className="hidden sm:inline">Ask Frosh</span>
           </button>
         </div>
       )}
 
       {open && (
-        <div className="fx-chat-panel" role="dialog" aria-label="FroshX assistant">
+        <div className="fx-chat-panel" role="dialog" aria-label="Frosh, the FroshX assistant">
           <div className="flex items-center gap-3 bg-ink px-5 py-4 text-white">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-flare-500"><ChatIcon className="h-5 w-5" /></span>
+            <Avatar />
             <div className="min-w-0 flex-1">
-              <p className="font-display text-base font-semibold leading-tight">FroshX Assistant</p>
-              <p className="flex items-center gap-1.5 text-xs text-white/60"><span className="h-1.5 w-1.5 rounded-full bg-green-400" /> Replies instantly</p>
+              <p className="font-display text-base font-semibold leading-tight">Frosh</p>
+              <p className="flex items-center gap-1.5 text-xs text-white/60"><span className="h-1.5 w-1.5 rounded-full bg-green-400" /> FroshX Assistant · online</p>
             </div>
             <a href="https://wa.me/2347041013001" target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp" className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20"><WhatsAppIcon className="h-4 w-4 text-[#25D366]" /></a>
             <button onClick={() => setOpen(false)} aria-label="Close chat" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/10"><CloseIcon className="h-5 w-5" /></button>
@@ -230,7 +302,7 @@ export default function ChatWidget() {
                     </div>
                   )}
                   {m.from === "bot" && m.form && !m.form.done && (
-                    <EnquiryForm question={m.form.question} history={history} sid={sessionId()} onDone={(email, name) => enquiryDone(m.id, email, name)} />
+                    <EnquiryForm question={m.form.question} history={history} sid={sessionId()} initialName={name} onDone={(email, nm) => enquiryDone(m.id, email, nm)} />
                   )}
                   {m.from === "bot" && m.chips && i === msgs.length - 1 && !typing && (
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -249,12 +321,12 @@ export default function ChatWidget() {
 
           <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="border-t border-line bg-white p-3">
             <div className="flex items-center gap-2">
-              <input ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} maxLength={500} placeholder="Type your question…" aria-label="Your message" className="fx-chat-input" />
+              <input ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} maxLength={500} placeholder={awaitingName ? "Type your name…" : "Type your question…"} aria-label="Your message" className="fx-chat-input" />
               <button disabled={!text.trim() || typing} aria-label="Send" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink text-white transition hover:bg-flare-600 disabled:opacity-40">
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 14-7-5 14-2-6-7-1Z" /></svg>
               </button>
             </div>
-            <p className="mt-2 text-center text-[11px] text-muted">Answers come from FroshX information. For anything else, use WhatsApp.</p>
+            <p className="mt-2 text-center text-[11px] text-muted">Frosh answers from FroshX information. For anything else, use WhatsApp.</p>
           </form>
         </div>
       )}

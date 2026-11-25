@@ -72,7 +72,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ reply: null, handoff: true, limited: true });
       }
     }
-    const { text: raw, model } = await askAI(systemPrompt(), cleanHistory(b.history, message), 900);
+    const { text: raw, model } = await askAI(systemPrompt(clip(b.name, 40)), cleanHistory(b.history, message), 900);
     const parsed = parseAiReply(raw.replace(/[*#`]/g, ""));
     const text = parsed.text.slice(0, 1200);
     await log(text, parsed.handoff ? "none" : "ai", parsed.handoff ? "handoff" : model);
